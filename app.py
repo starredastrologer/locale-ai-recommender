@@ -1,4 +1,3 @@
---- START OF FILE locale-ai-recommender-main/app.py ---
 
 import os
 import json
