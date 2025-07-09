@@ -78,7 +78,7 @@
                     <img src="${mainPhoto}" alt="${place.name}" class="card-photo">
                     <h3 class="card-title">${place.name}</h3>
                     <p class="card-rating">⭐ ${place.rating || 'N/A'} (${place.user_ratings_total || 0} ratings)</p>
-                    <a href="${place.link}" target="_blank" class="card-link">View on Map</a>
+                    <a href="${place.link}" target="_blank" class="card-link" rel="noopener noreferrer">Open in Maps</a>
                 `;
                 return card;
             }
