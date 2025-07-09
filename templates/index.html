@@ -9,11 +9,11 @@
 <body>
     <div class="landing-container">
         <header class="landing-header">
-            <!-- IMPROVEMENT 1: Added emoji to the link -->
             <a href="/history" class="history-link">📜 My History</a>
         </header>
         <main class="hero-section">
-            <div class="hero-logo">L</div>
+            <!-- FIX #3: Replaced text logo with image logo -->
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Localē Logo" class="hero-logo-img">
             <div class="hero-text">
                 <h2>Discover Your Next Favorite Spot. Instantly.</h2>
                 <p>Tired of endless scrolling? 😴 Tell us what you're looking for, and our AI will find the perfect place based on atmosphere, reviews, and real-world data.</p>
