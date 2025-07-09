@@ -35,13 +35,12 @@ body {
 .primary-action-button { padding: 15px 40px; font-size: 1.1rem; font-weight: bold; border-radius: 50px; border: none; cursor: pointer; background: linear-gradient(145deg, var(--primary-accent-light), var(--primary-accent)); color: white; box-shadow: 0 4px 20px rgba(29, 185, 84, 0.3); transition: all 0.2s ease-in-out; }
 .primary-action-button:hover { transform: scale(1.05); box-shadow: 0 6px 25px rgba(29, 185, 84, 0.4); }
 
-/* --- FIX #3: LOGO STYLING --- */
+/* --- Logo Styling --- */
 .hero-logo-img { max-width: 350px; margin-bottom: 20px; animation: fadeInUp 1s ease-out; }
 .small-logo-img { max-width: 50px; margin-bottom: 20px; }
 
 /* --- Landing & History Page Shared Styles --- */
 .landing-header { text-align: center; padding: 20px; position: relative; width: 100%; box-sizing: border-box; }
-.landing-header h2 { font-size: 2rem; }
 .history-link, .back-link { position: absolute; top: 25px; right: 25px; color: var(--text-light); background-color: var(--bg-card); padding: 10px 20px; border-radius: 50px; text-decoration: none; font-weight: 500; transition: all 0.2s ease; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
 .history-link:hover, .back-link:hover { transform: scale(1.05); background-color: var(--primary-accent); }
 
@@ -63,7 +62,7 @@ body {
 
 /* --- Results Screen & Cards --- */
 #results-container { padding: 0; justify-content: flex-start; }
-.results-header { padding: 20px 20px 10px 20px; font-size: 1.5rem; color: var(--text-medium); width: 100%; box-sizing: border-box; flex-shrink: 0; }
+.results-header { padding: 20px 20px 10px 20px; font-size: 1.5rem; color: var(--text-medium); width: 100%; box-sizing: border-box; flex-shrink: 0; text-align: center; }
 #cards-wrapper { display: flex; justify-content: center; gap: 30px; width: 100%; padding: 0 20px 20px 20px; box-sizing: border-box; flex-grow: 1; overflow-y: auto; }
 .recommendation-card { position: relative; flex: 0 0 350px; height: 520px; background-color: var(--bg-light); border-radius: 15px; padding: 20px; display: flex; flex-direction: column; transition: transform 0.3s ease; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2); animation: fadeInUp 0.5s ease-out; animation-fill-mode: both; border: 1px solid var(--border-color); }
 .recommendation-card:hover { transform: translateY(-5px); }
@@ -71,84 +70,61 @@ body {
 .card-title { font-size: 1.5rem; font-weight: bold; margin: 0; flex-shrink: 0; text-align: left;}
 .card-rating { color: var(--text-medium); margin: 5px 0 15px 0; flex-shrink: 0; text-align: left;}
 .travel-time { color: var(--text-medium); font-size: 0.9rem; text-align: left; }
-
 .card-review details { flex-grow: 1; overflow: hidden; margin: 15px 0; text-align: left; }
 .card-review summary { cursor: pointer; font-style: italic; color: var(--text-medium); padding: 5px; border-radius: 5px; transition: background 0.2s ease; list-style-position: inside; }
 .card-review summary:hover { background: var(--bg-card); }
 .card-review summary::marker { color: var(--primary-accent); }
 .card-review p { margin-top: 10px; padding-left: 10px; border-left: 2px solid var(--primary-accent); max-height: 100px; overflow-y: auto; color: var(--text-light); font-style: normal;}
-.card-review p::-webkit-scrollbar { width: 6px; }
-.card-review p::-webkit-scrollbar-track { background: transparent; }
-.card-review p::-webkit-scrollbar-thumb { background: var(--bg-card); border-radius: 3px; }
-
 .card-link { display: block; text-align: center; padding: 15px; text-decoration: none; border-radius: 50px; margin-top: auto; font-weight: bold; flex-shrink: 0; background: linear-gradient(145deg, #3c3c3c, #282828); color: var(--text-light); transition: all 0.2s ease-in-out; }
 .card-link:hover { background: linear-gradient(145deg, var(--primary-accent-light), var(--primary-accent)); box-shadow: 0 4px 20px rgba(29, 185, 84, 0.3); transform: scale(1.02); }
 .bookmark-btn { position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.5); border: none; border-radius: 50%; width: 40px; height: 40px; color: white; font-size: 20px; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center;}
 .bookmark-btn:hover { background: rgba(0,0,0,0.8); }
 .bookmark-btn.bookmarked { color: var(--primary-accent); }
-
-/* Feedback Actions Footer */
 .results-feedback { flex-shrink: 0; display: flex; gap: 20px; padding: 20px; width: 100%; justify-content: center; box-sizing: border-box; background-color: rgba(18, 18, 18, 0.8); backdrop-filter: blur(5px); border-top: 1px solid var(--border-color); }
 .results-feedback button { padding: 15px 30px; font-size: 1rem; border-radius: 50px; border: 1px solid var(--border-color); cursor: pointer; background: var(--bg-light); color: var(--text-light); transition: all 0.2s ease-in-out; }
 .results-feedback button:hover { transform: translateY(-3px); }
 #restart-button { background: linear-gradient(145deg, var(--primary-accent-light), var(--primary-accent)); border: none; box-shadow: 0 4px 20px rgba(29, 185, 84, 0.2); }
 
-/* --- Other Screens --- */
-#feedback-container, #success-container, #error-container { max-width: 600px; }
-#chat-history { margin-bottom: 20px; font-size: 1.2rem; color: var(--text-medium); line-height: 1.6; }
-#chat-history strong { color: var(--primary-accent); font-weight: bold; }
-#feedback-form { width: 100%; display: flex; margin-top: 20px; }
-#feedback-input { flex-grow: 1; padding: 15px 20px; background: var(--bg-light); border: 1px solid var(--border-color); color: var(--text-light); border-radius: 50px; font-size: 1rem; }
-#feedback-form button { background: var(--primary-accent); border: none; color: white; border-radius: 50%; width: 50px; height: 50px; font-size: 1.5rem; margin-left: 10px; cursor: pointer; }
-#error-container h2 { color: #ff6b6b; }
-.restart-button { margin-top: 20px; padding: 15px 30px; text-decoration: none; border-radius: 50px; font-weight: bold; background: linear-gradient(145deg, var(--primary-accent-light), var(--primary-accent)); color: white; box-shadow: 0 4px 20px rgba(29, 185, 84, 0.2); transition: transform 0.2s ease; }
-.restart-button:hover { transform: scale(1.05); }
-
-/* --- History Page Styles --- */
-.history-container { width: 90%; max-width: 1200px; margin: 40px auto; }
-.history-section h3 { font-size: 1.8rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 20px; }
-.cards-wrapper-history { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
-.history-card { height: auto; border: 1px solid var(--border-color); }
-
 /* --- Mobile Responsiveness --- */
 @media (max-width: 768px) {
-    body { -webkit-text-size-adjust: 100%; }
     .history-link, .back-link { position: static; display: inline-block; margin: 0 auto 20px; width: fit-content; }
     .landing-header { padding-bottom: 0; }
-    .landing-container { padding: 20px; }
-    .hero-section h2 { font-size: 2rem; }
     .landing-form { flex-direction: column; align-items: center; gap: 15px; }
     .landing-form input { width: 90%; }
     .landing-form button { margin-left: 0; }
     .app-container { align-items: flex-start; padding-top: 0; }
     
-    /* --- FIX #2: MOBILE RESULTS VIEW --- */
-    #results-container { padding-bottom: 100px; /* Add padding to prevent footer from overlapping last card */ }
+    /* --- FIX #1: MOBILE RESULTS UI OVERHAUL --- */
+    #results-container {
+        padding-bottom: 110px; /* Add space at the bottom so the sticky footer doesn't hide content */
+        justify-content: flex-start;
+    }
     .results-header { text-align: left; padding: 20px 20px 10px 20px; }
     #cards-wrapper {
-        flex-direction: column;   /* STACK CARDS VERTICALLY */
+        flex-direction: column;   /* Stack cards vertically */
         align-items: center;      /* Center the cards horizontally */
-        gap: 20px;                /* Space between vertical cards */
+        gap: 20px;                /* Add space between cards */
         overflow-x: hidden;       /* Disable horizontal scroll */
-        overflow-y: auto;         /* Enable vertical scroll */
-        height: 100%;             /* Allow wrapper to fill available space */
+        overflow-y: auto;         /* Enable vertical scroll for the list of cards */
+        height: 100%;
+        padding-bottom: 30px; /* Extra space at the end of the scroll */
     }
     .recommendation-card {
-        flex: 0 0 auto;           /* Let card size itself */
-        width: 90%;               /* Card takes 90% of screen width */
-        height: auto;
+        flex-shrink: 0; /* Prevent card from shrinking */
+        width: 90%;     /* Make cards take up most of the screen width */
+        height: auto;   /* Let height be determined by content */
         min-height: 480px;
     }
     .results-feedback {
-        position: fixed; /* Make buttons always visible at the bottom */
+        position: fixed; /* Make the footer sticky */
         bottom: 0;
         left: 0;
         right: 0;
-        flex-direction: row; /* Buttons side-by-side again */
+        flex-direction: row; /* Buttons side-by-side */
         gap: 15px;
         padding: 15px;
         border-top: 1px solid var(--border-color);
-        background: var(--bg-dark);
+        background: var(--bg-dark); /* Solid background for readability */
     }
     .results-feedback button { width: 100%; }
 }
