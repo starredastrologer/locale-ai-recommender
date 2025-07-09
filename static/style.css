@@ -5,9 +5,9 @@
     --bg-light: #141414;
     --bg-card: #1e1e1e;
     --bg-card-hover: #252525;
-    --primary-accent: #00d4aa;
-    --primary-accent-light: #00f0c7;
-    --primary-accent-dark: #00b894;
+    --primary-accent: #1ED760;
+    --primary-accent-light: #22ff6b;
+    --primary-accent-dark: #1bc653;
     --text-light: #ffffff;
     --text-medium: #a0a0a0;
     --text-dim: #666666;
@@ -35,8 +35,10 @@
 body {
     font-family: var(--font-main);
     background: var(--bg-dark);
-    background-image: radial-gradient(circle at 20% 80%, rgba(0, 212, 170, 0.05) 0%, transparent 50%),
-                      radial-gradient(circle at 80% 20%, rgba(0, 212, 170, 0.03) 0%, transparent 50%);
+    background-image: 
+        radial-gradient(circle at 20% 80%, rgba(30, 215, 96, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(30, 215, 96, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(30, 215, 96, 0.03) 0%, transparent 50%);
     color: var(--text-light);
     margin: 0;
     padding: 0;
@@ -84,6 +86,11 @@ body {
     50% { opacity: 0.7; }
 }
 
+@keyframes glow {
+    0%, 100% { box-shadow: 0 0 20px rgba(30, 215, 96, 0.3); }
+    50% { box-shadow: 0 0 30px rgba(30, 215, 96, 0.5); }
+}
+
 /* --- General & Shared Styles --- */
 .app-container { 
     display: flex; 
@@ -128,7 +135,7 @@ body {
     cursor: pointer; 
     background: linear-gradient(135deg, var(--primary-accent), var(--primary-accent-dark)); 
     color: white; 
-    box-shadow: 0 8px 32px rgba(0, 212, 170, 0.3); 
+    box-shadow: 0 8px 32px rgba(30, 215, 96, 0.3); 
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
     position: relative;
     overflow: hidden;
@@ -136,7 +143,7 @@ body {
 
 .primary-action-button:hover { 
     transform: translateY(-2px); 
-    box-shadow: 0 12px 40px rgba(0, 212, 170, 0.4); 
+    box-shadow: 0 12px 40px rgba(30, 215, 96, 0.4); 
     background: linear-gradient(135deg, var(--primary-accent-light), var(--primary-accent));
 }
 
@@ -319,11 +326,12 @@ body {
     max-width: none;
     width: 100%;
     height: 100vh;
+    overflow: hidden;
 }
 
 .results-header { 
-    padding: var(--spacing-xl) var(--spacing-lg) var(--spacing-lg); 
-    font-size: clamp(1.3rem, 3vw, 1.8rem); 
+    padding: var(--spacing-lg) var(--spacing-md); 
+    font-size: clamp(1.2rem, 3vw, 1.6rem); 
     color: var(--text-light); 
     width: 100%; 
     flex-shrink: 0; 
@@ -331,22 +339,26 @@ body {
     font-weight: 600;
     background: var(--bg-dark);
     border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
 
 #cards-wrapper { 
     display: flex; 
-    justify-content: center; 
-    gap: var(--spacing-xl); 
+    justify-content: flex-start; 
+    gap: var(--spacing-lg); 
     width: 100%; 
-    padding: var(--spacing-xl) var(--spacing-lg) var(--spacing-2xl); 
+    padding: var(--spacing-lg); 
     flex-grow: 1; 
     overflow-y: auto; 
-    overflow-x: hidden;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
 }
 
 .recommendation-card { 
     position: relative; 
-    flex: 0 0 380px; 
+    flex: 0 0 350px; 
     background: var(--bg-card); 
     border-radius: var(--border-radius); 
     padding: var(--spacing-lg); 
@@ -357,6 +369,9 @@ body {
     animation: slideInFromBottom 0.6s ease-out; 
     animation-fill-mode: both; 
     backdrop-filter: blur(10px);
+    scroll-snap-align: start;
+    height: fit-content;
+    max-height: calc(100vh - 200px);
 }
 
 .recommendation-card:hover { 
@@ -367,7 +382,7 @@ body {
 
 .card-photo { 
     width: 100%; 
-    height: 220px; 
+    height: 200px; 
     object-fit: cover; 
     border-radius: var(--border-radius-small); 
     margin-bottom: var(--spacing-md); 
@@ -376,12 +391,13 @@ body {
 }
 
 .card-title { 
-    font-size: 1.4rem; 
+    font-size: 1.3rem; 
     font-weight: 700; 
     margin: 0 0 var(--spacing-sm) 0; 
     flex-shrink: 0; 
     text-align: left;
     color: var(--text-light);
+    line-height: 1.3;
 }
 
 .card-rating { 
@@ -404,6 +420,7 @@ body {
     flex-grow: 1; 
     margin: var(--spacing-md) 0; 
     text-align: left; 
+    min-height: 60px;
 }
 
 .card-review details { 
@@ -435,7 +452,7 @@ body {
     background: var(--bg-light);
     border-radius: var(--border-radius-small);
     border-left: 3px solid var(--primary-accent); 
-    max-height: 120px; 
+    max-height: 100px; 
     overflow-y: auto; 
     color: var(--text-light); 
     font-style: normal;
@@ -462,7 +479,7 @@ body {
 .card-link:hover { 
     background: linear-gradient(135deg, var(--primary-accent-light), var(--primary-accent)); 
     transform: translateY(-2px); 
-    box-shadow: 0 8px 25px rgba(0, 212, 170, 0.3);
+    box-shadow: 0 8px 25px rgba(30, 215, 96, 0.3);
 }
 
 .bookmark-btn { 
@@ -491,7 +508,7 @@ body {
 
 .bookmark-btn.bookmarked { 
     color: var(--primary-accent); 
-    background: rgba(0, 212, 170, 0.2);
+    background: rgba(30, 215, 96, 0.2);
 }
 
 .results-feedback { 
@@ -619,7 +636,7 @@ body {
 .history-container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: var(--spacing-2xl);
+    padding: var(--spacing-xl);
     min-height: 100vh;
 }
 
@@ -628,17 +645,18 @@ body {
 }
 
 .history-section h3 {
-    font-size: 1.5rem;
-    margin-bottom: var(--spacing-lg);
+    font-size: 1.8rem;
+    margin-bottom: var(--spacing-xl);
     color: var(--text-light);
-    font-weight: 600;
+    font-weight: 700;
+    text-align: center;
 }
 
 .cards-wrapper-history {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: var(--spacing-xl);
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
 }
 
 .history-card {
@@ -649,36 +667,63 @@ body {
 .search-history-list {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-md);
+    gap: var(--spacing-lg);
+    max-width: 800px;
+    margin: 0 auto;
 }
 
 .history-item {
     background: var(--bg-card);
-    padding: var(--spacing-lg);
+    padding: var(--spacing-xl);
     border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.history-item:hover {
+    border-color: var(--primary-accent);
+    transform: translateY(-2px);
 }
 
 .history-item p {
-    margin: 0 0 var(--spacing-sm) 0;
+    margin: 0 0 var(--spacing-md) 0;
     color: var(--text-light);
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.history-item strong {
+    color: var(--primary-accent);
 }
 
 .history-item ul {
     margin: 0;
-    padding-left: var(--spacing-lg);
+    padding-left: var(--spacing-xl);
+    list-style-type: none;
 }
 
 .history-item li {
-    margin-bottom: var(--spacing-xs);
+    margin-bottom: var(--spacing-sm);
+    position: relative;
+    padding-left: var(--spacing-md);
+}
+
+.history-item li:before {
+    content: "→";
+    position: absolute;
+    left: 0;
+    color: var(--primary-accent);
+    font-weight: bold;
 }
 
 .history-item a {
-    color: var(--primary-accent);
+    color: var(--text-light);
     text-decoration: none;
+    transition: color 0.3s ease;
 }
 
 .history-item a:hover {
+    color: var(--primary-accent);
     text-decoration: underline;
 }
 
@@ -687,6 +732,10 @@ body {
     font-style: italic;
     text-align: center;
     padding: var(--spacing-2xl);
+    font-size: 1.1rem;
+    background: var(--bg-card);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
 }
 
 /* --- Mobile Responsiveness --- */
@@ -745,16 +794,21 @@ body {
         font-size: 0.9rem;
     }
 
-    /* Mobile Results Layout */
+    /* Mobile Results Layout - COMPLETELY REDESIGNED */
     #results-container {
         height: 100vh;
-        padding-bottom: 0;
+        padding: 0;
+        overflow: hidden;
     }
 
     .results-header {
-        padding: var(--spacing-lg) var(--spacing-md) var(--spacing-md);
-        font-size: 1.3rem;
+        padding: var(--spacing-lg) var(--spacing-md);
+        font-size: 1.4rem;
         text-align: center;
+        position: sticky;
+        top: 0;
+        background: var(--bg-dark);
+        z-index: 100;
     }
 
     #cards-wrapper {
@@ -764,13 +818,32 @@ body {
         padding: var(--spacing-md) var(--spacing-md) 120px var(--spacing-md);
         overflow-x: hidden;
         overflow-y: auto;
+        height: calc(100vh - 140px);
+        scroll-snap-type: y mandatory;
     }
 
     .recommendation-card {
         flex: none;
         width: 100%;
         max-width: 400px;
-        min-height: 500px;
+        min-height: auto;
+        height: auto;
+        max-height: none;
+        scroll-snap-align: start;
+        margin-bottom: var(--spacing-md);
+    }
+
+    .card-photo {
+        height: 200px;
+    }
+
+    .card-title {
+        font-size: 1.3rem;
+        line-height: 1.3;
+    }
+
+    .card-review {
+        min-height: 50px;
     }
 
     .results-feedback {
@@ -782,7 +855,8 @@ body {
         gap: var(--spacing-sm);
         background: var(--bg-dark);
         border-top: 1px solid var(--border-color);
-        z-index: 100;
+        z-index: 1000;
+        backdrop-filter: blur(10px);
     }
 
     .results-feedback button {
@@ -815,9 +889,26 @@ body {
         padding: var(--spacing-lg);
     }
 
+    .history-section h3 {
+        font-size: 1.5rem;
+        margin-bottom: var(--spacing-lg);
+    }
+
     .cards-wrapper-history {
         grid-template-columns: 1fr;
         gap: var(--spacing-lg);
+    }
+
+    .search-history-list {
+        gap: var(--spacing-md);
+    }
+
+    .history-item {
+        padding: var(--spacing-lg);
+    }
+
+    .history-item p {
+        font-size: 1rem;
     }
 
     .hero-logo-img {
@@ -853,6 +944,15 @@ body {
     .card-title {
         font-size: 1.2rem;
     }
+
+    .results-header {
+        font-size: 1.2rem;
+        padding: var(--spacing-md);
+    }
+
+    #cards-wrapper {
+        padding: var(--spacing-sm) var(--spacing-sm) 120px var(--spacing-sm);
+    }
 }
 
 /* --- Loading Animation Enhancement --- */
@@ -877,4 +977,22 @@ a:focus-visible {
 ::selection {
     background: var(--primary-accent);
     color: white;
+}
+
+/* --- Custom Scrollbar --- */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-light);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-accent);
 }
