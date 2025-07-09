@@ -1,2 +1,2 @@
-# locale-ai-recommender
-Recommendation of Places
+# locale-ai
+# locale-ai
