@@ -153,18 +153,26 @@
                     <p class="card-rating">⭐ ${place.rating || 'N/A'} (${place.user_ratings_total || 0} ratings)</p>
                     <p class="travel-time">🚗 ${place.travel_time || 'Travel time not available'}</p>
                     ${reviewHtml}
-                    <button class="card-link" onclick="openMaps('${place.place_id}', '${place.place_name_encoded}', '${place.maps_url}', '${place.fallback_url}')">Open in Maps</button>
+                    <button class="card-link" onclick="openBrowserMaps('${place.browser_maps_url}', '${place.place_id}')">View on Google Maps</button>
                 `;
                 
                 card.querySelector('.bookmark-btn').addEventListener('click', (e) => toggleBookmark(e, place));
                 return card;
             }
 
-            // Universal Maps opening function that works on all devices
-            window.openMaps = function(placeId, placeName, mapsUrl, fallbackUrl) {
-                // ALWAYS open in browser - no app attempts
-                const finalUrl = mapsUrl || `https://maps.google.com/?q=place_id:${placeId}`;
-                window.open(finalUrl, '_blank', 'noopener,noreferrer');
+            // BROWSER ONLY Maps function - prevents any app redirects
+            window.openBrowserMaps = function(browserUrl, placeId) {
+                // Use the specific browser URL that won't redirect to app
+                const finalUrl = browserUrl || `https://www.google.com/maps/search/?api=1&query_place_id=${placeId}`;
+                
+                // Force open in new tab with specific parameters to stay in browser
+                const newWindow = window.open('', '_blank', 'noopener,noreferrer,width=1200,height=800');
+                if (newWindow) {
+                    newWindow.location.href = finalUrl;
+                } else {
+                    // Fallback if popup blocked
+                    window.location.href = finalUrl;
+                }
             };
 
             function displayResults(data) {
