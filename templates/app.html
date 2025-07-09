@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finding your spot... | Localē</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <input type="hidden" id="initial-query" value="{{ session.get('initial_query', '') }}">
+
+        <!-- Location Prompt Screen -->
+        <div id="location-container" class="state-container active">
+            <div class="logo">L</div>
+            <h2>Let's Find Your Location 🌍</h2>
+            <p class="prompt-text">To discover the best spots near you, please grant location access when your browser asks.</p>
+            <button id="grant-location-button" class="primary-action-button">Grant Location Access</button>
+        </div>
+
+        <!-- Distance Selection Screen -->
+        <div id="distance-container" class="state-container">
+            <div class="logo">L</div>
+            <h2>How far are you willing to travel? 🚗</h2>
+            <p class="prompt-text">Select an estimated travel time.</p>
+            <div class="distance-options">
+                <button class="distance-button" data-distance="1500">~10 mins</button>
+                <button class="distance-button" data-distance="4000">~20 mins</button>
+                <button class="distance-button" data-distance="8000">~30 mins</button>
+                <button class="distance-button" data-distance="15000">~1 hour</button>
+                <button class="distance-button" data-distance="30000">~2 hours</button>
+            </div>
+        </div>
+
+        <!-- Loading Screen -->
+        <div id="loading-container" class="state-container">
+            <div class="logo">L</div>
+            <h2 id="loading-text">Consulting the cosmos... ✨</h2>
+            <div class="spinner"></div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="results-container" class="state-container">
+            <h2 class="results-header">Voilà! Here's what I found 🪄</h2>
+            <div id="cards-wrapper"></div>
+            <div class="results-feedback">
+                <button id="restart-button">🔄 Start a New Search</button>
+                <button id="refine-button">🤔 Refine This Search</button>
+            </div>
+        </div>
+
+        <!-- Feedback Screen (Chat UI) -->
+        <div id="feedback-container" class="state-container">
+            <div id="chat-history"></div>
+            <form id="feedback-form">
+                <input type="text" id="feedback-input" placeholder="e.g., something cheaper or with outdoor seating...">
+                <button type="submit">→</button>
+            </form>
+        </div>
+
+        <!-- Error Screen -->
+        <div id="error-container" class="state-container">
+            <h2>Uh oh... ⚠️</h2>
+            <p id="error-message" class="error-text">I need your location to find the best spots nearby.</p>
+            <a href="/" class="restart-button">Try Again</a>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
