@@ -116,8 +116,9 @@ def get_final_recommendation(conversation_history, places_data, origin):
         for pid in recommended_ids:
             if pid in full_data_map:
                 place_data = full_data_map[pid]
-                # Using Google Maps search URL with place_id - opens in new tab on all devices
-                place_data['link'] = f"https://www.google.com/maps/search/?api=1&query_place_id={pid}"
+                # Using Google Maps search URL with location name and place_id for better compatibility
+                place_name = place_data.get('name', '').replace(' ', '+')
+                place_data['link'] = f"https://www.google.com/maps/search/?api=1&query={place_name}&query_place_id={pid}"
                 place_data['travel_time'] = travel_times.get(pid, 'N/A')
                 final_recs.append(place_data)
         return {"recommendations": final_recs}
