@@ -77,8 +77,18 @@
                     <img src="${mainPhoto}" alt="${place.name}" class="card-photo">
                     <h3 class="card-title">${place.name}</h3>
                     <p class="card-rating">⭐ ${place.rating || 'N/A'} (${place.user_ratings_total || 0} ratings)</p>
-                    <a href="${place.link || `https://maps.google.com/?q=place_id:${place.place_id}`}" target="_blank" rel="noopener noreferrer" class="card-link">View on Google Maps</a>
+                    <button onclick="openMapInBrowser('${place.link || `https://www.google.com/maps/search/?api=1&query_place_id=${place.place_id}`}')" class="card-link">View on Google Maps</button>
                 `;
+            // Global function to force browser opening of maps
+            window.openMapInBrowser = function(url) {
+                // Force opening in new browser tab/window
+                const newWindow = window.open(url, '_blank', 'noopener,noreferrer');
+                if (!newWindow) {
+                    // Fallback if popup blocked
+                    window.location.href = url;
+                }
+            };
+            
                 return card;
             }
         });

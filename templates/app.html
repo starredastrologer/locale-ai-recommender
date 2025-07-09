@@ -153,7 +153,7 @@
                     <p class="card-rating">⭐ ${place.rating || 'N/A'} (${place.user_ratings_total || 0} ratings)</p>
                     <p class="travel-time">🚗 ${place.travel_time || 'Travel time not available'}</p>
                     ${reviewHtml}
-                    <a href="${place.link}" target="_blank" rel="noopener noreferrer" class="card-link">View on Google Maps</a>
+                    <button onclick="openMapInBrowser('${place.link}')" class="card-link">View on Google Maps</button>
                 `;
                 
                 card.querySelector('.bookmark-btn').addEventListener('click', (e) => toggleBookmark(e, place));
@@ -235,6 +235,16 @@
             
             // --- This is the new starting point ---
             initializeLocation();
+            
+            // Global function to force browser opening of maps
+            window.openMapInBrowser = function(url) {
+                // Force opening in new browser tab/window
+                const newWindow = window.open(url, '_blank', 'noopener,noreferrer');
+                if (!newWindow) {
+                    // Fallback if popup blocked
+                    window.location.href = url;
+                }
+            };
         });
     </script>
 </body>
