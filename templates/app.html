@@ -12,7 +12,8 @@
 
         <!-- Location Prompt Screen -->
         <div id="location-container" class="state-container active">
-            <div class="logo">L</div>
+            <!-- FIX #3: Replaced text logo with image logo -->
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="small-logo-img">
             <h2>Let's Find Your Location 🌍</h2>
             <p class="prompt-text">To discover the best spots near you, please grant location access when your browser asks.</p>
             <button id="grant-location-button" class="primary-action-button">Grant Location Access</button>
@@ -20,7 +21,8 @@
 
         <!-- Distance Selection Screen -->
         <div id="distance-container" class="state-container">
-            <div class="logo">L</div>
+             <!-- FIX #3: Replaced text logo with image logo -->
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="small-logo-img">
             <h2>How far are you willing to travel? 🚗</h2>
             <p class="prompt-text">Select an estimated travel time.</p>
             <div class="distance-options">
@@ -34,14 +36,14 @@
 
         <!-- Loading Screen -->
         <div id="loading-container" class="state-container">
-            <div class="logo">L</div>
+            <!-- FIX #3: Replaced text logo with image logo -->
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="small-logo-img">
             <h2 id="loading-text">Consulting the cosmos... ✨</h2>
             <div class="spinner"></div>
         </div>
 
         <!-- Results Screen -->
         <div id="results-container" class="state-container">
-            <!-- This structure is new to support the mobile layout -->
             <h2 class="results-header">Voilà! Here's what I found 🪄</h2>
             <div id="cards-wrapper"></div>
             <div class="results-feedback">
@@ -70,12 +72,8 @@
     <!-- JAVASCRIPT LOGIC - EMBEDDED IN HTML -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // State management
             const states = ['location', 'distance', 'loading', 'results', 'feedback', 'error'];
-            const appState = {
-                location: null,
-                currentRecommendations: null
-            };
+            const appState = { location: null, currentRecommendations: null };
 
             function showState(stateName, data = {}) {
                 states.forEach(s => document.getElementById(`${s}-container`).classList.remove('active'));
@@ -85,15 +83,11 @@
                     if (stateName === 'error') {
                         document.getElementById('error-message').textContent = data.message || 'An unexpected error occurred. Please try again.';
                     }
-                    if (stateName === 'loading') {
-                        const messages = ["Consulting the cosmos... ✨", "Analyzing local vibes... 📡", "Asking the AI for its top picks... 🤖", "Cross-referencing reviews... 🧐", "Finding hidden gems... 💎"];
-                        document.getElementById('loading-text').textContent = messages[Math.floor(Math.random() * messages.length)];
-                    }
                 }
             }
 
-            // --- API Communication ---
             async function fetchRecommendations(body) {
+                showState('loading');
                 try {
                     const response = await fetch('/get_recommendation', {
                         method: 'POST',
@@ -101,14 +95,12 @@
                         body: JSON.stringify(body),
                     });
                     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                    return await response.json();
+                    handleApiResponse(await response.json());
                 } catch (error) {
-                    console.error("Fetch error:", error);
                     showState('error', { message: 'Could not connect to the server. Please check your connection and try again.' });
                 }
             }
             
-            // --- UI Rendering ---
             function createRecommendationCard(place) {
                 const card = document.createElement('div');
                 card.className = 'recommendation-card';
@@ -117,16 +109,19 @@
                     ? place.photo_urls[0] 
                     : 'https://via.placeholder.com/350x200/181818/B3B3B3?text=No+Image+Available';
 
-                // IMPROVEMENT 2: Review is now in a dropdown
-                const reviewText = place.reviews && place.reviews.length > 0 ? place.reviews[0] : 'No reviews available to show.';
+                // --- FIX #1: CORRECTLY DISPLAY THE REVIEW TEXT ---
+                // We check if reviews exist, if the first review exists, and if it has a 'text' property.
+                const reviewText = (place.reviews && place.reviews[0] && place.reviews[0].text)
+                    ? `"${place.reviews[0].text}"`
+                    : 'No top review available.';
+
                 const reviewHtml = `
                     <div class="card-review">
                         <details>
                             <summary>Show top review</summary>
-                            <p>"${reviewText}"</p>
+                            <p>${reviewText}</p>
                         </details>
-                    </div>
-                `;
+                    </div>`;
 
                 const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || {};
                 const isBookmarked = bookmarks[place.place_id] ? 'bookmarked' : '';
@@ -141,9 +136,7 @@
                     <a href="${place.link}" target="_blank" class="card-link">View on Google Maps</a>
                 `;
                 
-                // Add bookmark functionality
                 card.querySelector('.bookmark-btn').addEventListener('click', (e) => toggleBookmark(e, place));
-
                 return card;
             }
 
@@ -152,18 +145,14 @@
                 const wrapper = document.getElementById('cards-wrapper');
                 wrapper.innerHTML = '';
                 if (data && data.recommendations && data.recommendations.length > 0) {
-                    data.recommendations.forEach(place => {
-                        const card = createRecommendationCard(place);
-                        wrapper.appendChild(card);
-                    });
+                    data.recommendations.forEach(place => wrapper.appendChild(createRecommendationCard(place)));
                     showState('results');
                     saveToHistory(data);
                 } else {
-                    showState('error', { message: "Couldn't find any recommendations matching your criteria. Please try a different search." });
+                    showState('error', { message: "Couldn't find any recommendations matching your criteria." });
                 }
             }
 
-            // --- Local Storage ---
             function toggleBookmark(event, placeData) {
                 event.stopPropagation();
                 const btn = event.currentTarget;
@@ -182,92 +171,57 @@
             function saveToHistory(data) {
                 let history = JSON.parse(localStorage.getItem('searchHistory')) || [];
                 history.push(data);
-                if (history.length > 10) history.shift(); // Keep only last 10 searches
+                if (history.length > 10) history.shift();
                 localStorage.setItem('searchHistory', JSON.stringify(history));
             }
 
-            // --- Event Handlers & Initial Flow ---
             document.getElementById('grant-location-button').addEventListener('click', () => {
-                if (!navigator.geolocation) {
-                    showState('error', { message: 'Geolocation is not supported by your browser.' });
-                    return;
-                }
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
-                        appState.location = {
-                            lat: position.coords.latitude,
-                            lng: position.coords.longitude,
-                        };
+                        appState.location = { lat: position.coords.latitude, lng: position.coords.longitude };
                         showState('distance');
                     },
-                    () => showState('error', { message: 'Location access was denied. This app requires your location to find nearby places.' })
+                    () => showState('error', { message: 'Location access was denied. This app requires your location.' })
                 );
             });
 
             document.querySelectorAll('.distance-button').forEach(button => {
-                button.addEventListener('click', async () => {
-                    showState('loading');
-                    const initialQuery = document.getElementById('initial-query').value;
-                    const body = {
-                        query: initialQuery,
+                button.addEventListener('click', () => {
+                    fetchRecommendations({
+                        query: document.getElementById('initial-query').value,
                         location: appState.location,
                         distance: button.dataset.distance,
                         is_feedback: false
-                    };
-                    const response = await fetchRecommendations(body);
-                    handleApiResponse(response);
+                    });
                 });
             });
             
             document.getElementById('refine-button').addEventListener('click', () => {
-                const historyDiv = document.getElementById('chat-history');
-                historyDiv.innerHTML = `Your last search was for: <br><strong>"${appState.currentRecommendations.last_keyword}"</strong><br><br>How would you like to refine it?`;
+                document.getElementById('chat-history').innerHTML = `Your last search was for: <br><strong>"${appState.currentRecommendations.last_keyword}"</strong><br><br>How would you like to refine it?`;
                 showState('feedback');
             });
 
-            document.getElementById('feedback-form').addEventListener('submit', async (e) => {
+            document.getElementById('feedback-form').addEventListener('submit', (e) => {
                 e.preventDefault();
                 const input = document.getElementById('feedback-input');
-                const feedbackQuery = input.value.trim();
-                if (!feedbackQuery) return;
-                
-                showState('loading');
-                const body = {
-                    query: feedbackQuery,
-                    location: appState.location,
-                    is_feedback: true,
-                };
+                if (!input.value.trim()) return;
+                fetchRecommendations({ query: input.value.trim(), location: appState.location, is_feedback: true });
                 input.value = '';
-                const response = await fetchRecommendations(body);
-                handleApiResponse(response);
             });
             
             document.getElementById('restart-button').addEventListener('click', () => window.location.href = '/');
 
             function handleApiResponse(response) {
-                if (!response) return; // Error already handled by fetchRecommendations
+                if (!response) return;
                 switch(response.type) {
-                    case 'recommendation':
-                        displayResults(response.data);
-                        break;
+                    case 'recommendation': displayResults(response.data); break;
                     case 'question':
                         showState('feedback');
                         document.getElementById('chat-history').textContent = response.content;
                         break;
-                    case 'expand_search':
-                        // For simplicity in this refactor, we can treat this as an error for now
-                        // or create a dedicated state for it.
-                        showState('error', { message: response.message + ' Would you like to try a new search?' });
-                        break;
-                    case 'final_message':
-                        showState('error', { message: response.content });
-                        break;
-                    default:
-                        showState('error', { message: response.content || 'An unknown error occurred.' });
-                        break;
+                    default: showState('error', { message: response.content || 'An unknown error occurred.' }); break;
                 }
             }
-
         });
     </script>
 </body>
