@@ -153,27 +153,12 @@
                     <p class="card-rating">⭐ ${place.rating || 'N/A'} (${place.user_ratings_total || 0} ratings)</p>
                     <p class="travel-time">🚗 ${place.travel_time || 'Travel time not available'}</p>
                     ${reviewHtml}
-                    <button class="card-link" onclick="openBrowserMaps('${place.browser_maps_url}', '${place.place_id}')">View on Google Maps</button>
+                    <a href="${place.link}" target="_blank" rel="noopener noreferrer" class="card-link">View on Google Maps</a>
                 `;
                 
                 card.querySelector('.bookmark-btn').addEventListener('click', (e) => toggleBookmark(e, place));
                 return card;
             }
-
-            // BROWSER ONLY Maps function - prevents any app redirects
-            window.openBrowserMaps = function(browserUrl, placeId) {
-                // Use the specific browser URL that won't redirect to app
-                const finalUrl = browserUrl || `https://www.google.com/maps/search/?api=1&query_place_id=${placeId}`;
-                
-                // Force open in new tab with specific parameters to stay in browser
-                const newWindow = window.open('', '_blank', 'noopener,noreferrer,width=1200,height=800');
-                if (newWindow) {
-                    newWindow.location.href = finalUrl;
-                } else {
-                    // Fallback if popup blocked
-                    window.location.href = finalUrl;
-                }
-            };
 
             function displayResults(data) {
                 appState.currentRecommendations = data;

@@ -9,8 +9,7 @@
 <body>
     <div class="history-container">
         <header class="landing-header">
-            <!-- IMPROVEMENT 1: Added emoji to the link -->
-            <a href="/" class="back-link">← Back to Search</a>
+            <a href="/" class="back-link">←</a>
             <h2>My Bookmarks & History</h2>
         </header>
 
@@ -78,25 +77,10 @@
                     <img src="${mainPhoto}" alt="${place.name}" class="card-photo">
                     <h3 class="card-title">${place.name}</h3>
                     <p class="card-rating">⭐ ${place.rating || 'N/A'} (${place.user_ratings_total || 0} ratings)</p>
-                    <button class="card-link" onclick="openBrowserMaps('${place.browser_maps_url || `https://www.google.com/maps/search/?api=1&query_place_id=${place.place_id}`}', '${place.place_id}')">View on Google Maps</button>
+                    <a href="${place.link || `https://maps.google.com/?q=place_id:${place.place_id}`}" target="_blank" rel="noopener noreferrer" class="card-link">View on Google Maps</a>
                 `;
                 return card;
             }
-            
-            // BROWSER ONLY Maps function - prevents any app redirects (same as app.html)
-            window.openBrowserMaps = function(browserUrl, placeId) {
-                // Use the specific browser URL that won't redirect to app
-                const finalUrl = browserUrl || `https://www.google.com/maps/search/?api=1&query_place_id=${placeId}`;
-                
-                // Force open in new tab with specific parameters to stay in browser
-                const newWindow = window.open('', '_blank', 'noopener,noreferrer,width=1200,height=800');
-                if (newWindow) {
-                    newWindow.location.href = finalUrl;
-                } else {
-                    // Fallback if popup blocked
-                    window.location.href = finalUrl;
-                }
-            };
         });
     </script>
 </body>
