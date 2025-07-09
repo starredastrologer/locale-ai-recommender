@@ -1,3 +1,5 @@
+--- START OF FILE locale-ai-recommender-main/templates/history.html ---
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -79,7 +81,7 @@
                     <img src="${mainPhoto}" alt="${place.name}" class="card-photo">
                     <h3 class="card-title">${place.name}</h3>
                     <p class="card-rating">⭐ ${place.rating || 'N/A'} (${place.user_ratings_total || 0} ratings)</p>
-                    <a href="${place.link || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}&query_place_id=${place.place_id}`}" target="_blank" rel="noopener noreferrer" class="card-link">View on Google Maps</a>
+                    <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}&query_place_id=${place.place_id}" target="_blank" rel="noopener noreferrer" class="card-link">View on Google Maps</a>
                 `;
                 return card;
             }
