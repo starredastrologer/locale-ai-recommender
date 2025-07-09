@@ -187,7 +187,19 @@ body {
     justify-content: flex-end;
 }
 
-.history-link, .back-link { 
+.history-header {
+    position: relative;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.history-header h2 {
+    margin: 0px;
+}
+
+.history-link {
     color: var(--text-medium); 
     background-color: var(--bg-card); 
     padding: var(--spacing-sm) var(--spacing-lg); 
@@ -197,6 +209,25 @@ body {
     transition: all 0.3s ease; 
     border: 1px solid var(--border-color);
     font-size: 0.95rem;
+}
+
+.back-link {
+    position: absolute;
+    left: var(--spacing-lg);
+    color: var(--text-medium);
+    background-color: var(--bg-card);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-radius: var(--border-radius-large);
+    text-decoration: none;
+    border: 1px solid var(--border-color);
+    font-size: 0.95rem;
+}
+
+@media only screen and (max-width: 515px) {
+  .back-link {
+    left: -4px;
+    padding: 1px 6px;
+  }
 }
 
 .history-link:hover, .back-link:hover { 
