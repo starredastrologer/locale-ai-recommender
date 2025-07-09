@@ -10,10 +10,9 @@ from flask import Flask, render_template, request, jsonify, session
 app = Flask(__name__)
 app.secret_key = os.urandom(24) 
 
-# --- IMPORTANT: PASTE YOUR SECRET API KEYS HERE ---
-GOOGLE_MAPS_API_KEY = "AIzaSyDLibrz92pw4Ae3FFOfHPO4NALWcj7ocoo"
-OPENAI_API_KEY = "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"
-
+# --- Reads secret keys from the server environment ---
+GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 openai.api_key = OPENAI_API_KEY
 
 # --- Helper Functions ---
