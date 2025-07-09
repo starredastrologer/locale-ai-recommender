@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My History | Localē</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="history-container">
+        <header class="landing-header">
+            <a href="/" class="back-link">← Back to Search</a>
+            <h2>My Bookmarks & History</h2>
+        </header>
+
+        <section class="history-section">
+            <h3>⭐ Bookmarked Places</h3>
+            <div id="bookmark-cards-wrapper" class="cards-wrapper-history">
+                <!-- Bookmarks will be injected here by JavaScript -->
+            </div>
+            <p id="no-bookmarks-text" class="empty-state-text" style="display: none;">You haven't bookmarked any places yet. Click the ♡ icon on a result to save it here!</p>
+        </section>
+
+        <section class="history-section">
+            <h3>📜 Recent Searches</h3>
+            <div id="search-history-list" class="search-history-list">
+                 <!-- Search History will be injected here by JavaScript -->
+            </div>
+            <p id="no-history-text" class="empty-state-text" style="display: none;">Your recent successful searches will appear here.</p>
+        </section>
+    </div>
+    
+    <!-- A separate script for the history page -->
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const bookmarkWrapper = document.getElementById("bookmark-cards-wrapper");
+            const noBookmarksText = document.getElementById("no-bookmarks-text");
+            const historyWrapper = document.getElementById("search-history-list");
+            const noHistoryText = document.getElementById("no-history-text");
+
+            // --- Load Bookmarks ---
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || {};
+            if (Object.keys(bookmarks).length > 0) {
+                Object.values(bookmarks).forEach(place => {
+                    const card = createHistoryCard(place);
+                    bookmarkWrapper.appendChild(card);
+                });
+            } else {
+                noBookmarksText.style.display = 'block';
+            }
+
+            // --- Load History ---
+            const history = JSON.parse(localStorage.getItem('searchHistory')) || [];
+            if (history.length > 0) {
+                 [...history].reverse().forEach(item => { // Show most recent first
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'history-item';
+                    
+                    let placesList = '<ul>';
+                    item.recommendations.forEach(place => {
+                        placesList += `<li><a href="${place.link}" target="_blank">${place.name}</a></li>`;
+                    });
+                    placesList += '</ul>';
+
+                    historyItem.innerHTML = `<p>Your search for <strong>"${item.last_keyword}"</strong> found:</p>${placesList}`;
+                    historyWrapper.appendChild(historyItem);
+                });
+            } else {
+                noHistoryText.style.display = 'block';
+            }
+
+            function createHistoryCard(place) {
+                const card = document.createElement("div");
+                card.className = "recommendation-card history-card";
+                const mainPhoto = place.photo_urls && place.photo_urls.length > 0 ? place.photo_urls[0] : 'https://via.placeholder.com/350x200/181818/B3B3B3?text=No+Image';
+                card.innerHTML = `
+                    <img src="${mainPhoto}" alt="${place.name}" class="card-photo">
+                    <h3 class="card-title">${place.name}</h3>
+                    <p class="card-rating">⭐ ${place.rating || 'N/A'} (${place.user_ratings_total || 0} ratings)</p>
+                    <a href="${place.link}" target="_blank" class="card-link">View on Map</a>
+                `;
+                return card;
+            }
+        });
+    </script>
+</body>
+</html>
