@@ -27,7 +27,8 @@ def moderate_query(user_input):
 
 def refine_query_with_llm(conversation_history):
     """
-    NEW INTELLIGENT PROMPT: This is the core fix for the refinement issue.
+    Takes the entire conversation history with the user and uses a powerful AI
+    model (GPT-4o mini) to create a single, perfect search keyword for Google Maps.
     """
     system_prompt = """
     You are an expert conversational query refiner for the Google Maps Places API. Your primary goal is to combine the user's entire conversation history into a single, optimized 5-6 word keyword phrase for the API.
@@ -55,6 +56,9 @@ def refine_query_with_llm(conversation_history):
         print(f"Error in refine_query_with_llm: {e}"); return {"type": "error", "content": "Sorry, I had trouble refining your query."}
 
 def get_nearby_places(location, keyword, radius):
+    """
+    Searches the Google Maps API for places matching a keyword near a specific location.
+    """
     url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
     params = {'location': f"{location['lat']},{location['lng']}", 'radius': radius, 'keyword': keyword, 'key': GOOGLE_MAPS_API_KEY}
     try:
@@ -63,6 +67,9 @@ def get_nearby_places(location, keyword, radius):
         print(f"Error in get_nearby_places: {e}"); return None
 
 def get_place_details_and_photos(place_id):
+    """
+    Gets detailed information for a single place, including its rating, reviews, and photos.
+    """
     details_url = "https://maps.googleapis.com/maps/api/place/details/json"
     params = {'place_id': place_id, 'fields': 'name,rating,reviews,photos,place_id,user_ratings_total', 'key': GOOGLE_MAPS_API_KEY}
     try:
@@ -74,6 +81,10 @@ def get_place_details_and_photos(place_id):
         print(f"Error in get_place_details_and_photos: {e}"); return None
 
 def get_travel_times(origin, place_ids):
+    """
+    Uses the Google Maps Distance Matrix API to calculate the travel time from
+    the user's location to a list of recommended places.
+    """
     if not place_ids: return {}
     url = "https://maps.googleapis.com/maps/api/distancematrix/json"
     params = {'origins': f"{origin['lat']},{origin['lng']}", 'destinations': '|'.join([f"place_id:{pid}" for pid in place_ids]), 'key': GOOGLE_MAPS_API_KEY}
@@ -85,20 +96,28 @@ def get_travel_times(origin, place_ids):
         print(f"Error getting travel times: {e}"); return {}
 
 def get_final_recommendation(conversation_history, places_data, origin):
+    """
+    After finding a list of potential places, this function uses an AI to analyze
+    their reviews and select the top two that best match the user's original request.
+    """
     lean_data_for_llm = [{'place_id': p.get('place_id'), 'name': p.get('name'), 'rating': p.get('rating'), 'reviews': [r.get('text', '') for r in p.get('reviews', [])[:3]]} for p in places_data]
     full_data_map = {p.get('place_id'): p for p in places_data}
     if not lean_data_for_llm: return None
+    
     prompt = f"""From the list of places, analyze reviews to select the top two that best match: "{conversation_history}". Your response MUST be a JSON object with a key "recommended_ids" which is a list of the string place_ids for your two choices. Data: {json.dumps(lean_data_for_llm, indent=2)}"""
     try:
         response = openai.chat.completions.create(model="gpt-3.5-turbo", response_format={"type": "json_object"}, messages=[{"role": "system", "content": "You are a recommender. Always respond in the requested JSON format."}, {"role": "user", "content": prompt}])
         llm_output = json.loads(response.choices[0].message.content)
+        
         recommended_ids = llm_output.get("recommended_ids", [])
         travel_times = get_travel_times(origin, recommended_ids)
+        
         final_recs = []
         for pid in recommended_ids:
             if pid in full_data_map:
                 place_data = full_data_map[pid]
-                place_data['link'] = f"https://www.google.com/maps/place/?q=place_id:{pid}"
+                # --- FIX #2: Using a more robust, mobile-friendly Google Maps URL ---
+                place_data['link'] = f"https://www.google.com/maps/search/?api=1&query_place_id={pid}"
                 place_data['travel_time'] = travel_times.get(pid, 'N/A')
                 final_recs.append(place_data)
         return {"recommendations": final_recs}
@@ -151,7 +170,6 @@ def get_recommendation_route():
 
     unseen_places = [p for p in nearby_places['results'] if p.get('place_id') not in session.get('excluded_ids', [])]
     
-    # MODIFIED SECTION: This part is now simpler and safer.
     if not unseen_places:
         return jsonify({"type": "error", "content": "I couldn't find any new places matching your refined search. Try broadening your criteria or starting a new search."})
     
@@ -163,8 +181,6 @@ def get_recommendation_route():
 
     session['excluded_ids'].extend([p.get('place_id') for p in final_recs_data["recommendations"]])
     final_recs_data['last_keyword'] = final_keyword
-    
-    # REMOVED the line that caused the error. The session will no longer store the large results data.
     
     session.modified = True
     return jsonify({"type": "recommendation", "data": final_recs_data})
