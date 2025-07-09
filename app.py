@@ -1,5 +1,3 @@
-
-
 import os
 import json
 import requests
@@ -152,12 +150,10 @@ def get_recommendation_route():
             return jsonify({"type": "error", "content": "I couldn't find any places, even in a wider area."})
 
     unseen_places = [p for p in nearby_places['results'] if p.get('place_id') not in session.get('excluded_ids', [])]
+    
+    # MODIFIED SECTION: This part is now simpler and safer.
     if not unseen_places:
-        if last_results := session.get('last_successful_recommendations'):
-            last_results['message'] = "I couldn't find any new places. Here are the previous best matches."
-            return jsonify({"type": "recommendation", "data": last_results})
-        else:
-            return jsonify({"type": "error", "content": "I couldn't find any new places. Try broadening your search."})
+        return jsonify({"type": "error", "content": "I couldn't find any new places matching your refined search. Try broadening your criteria or starting a new search."})
     
     detailed_places = [get_place_details_and_photos(p.get('place_id')) for p in unseen_places[:7] if p.get('place_id')]
     final_recs_data = get_final_recommendation(session['conversation'], [d for d in detailed_places if d], location)
@@ -167,7 +163,9 @@ def get_recommendation_route():
 
     session['excluded_ids'].extend([p.get('place_id') for p in final_recs_data["recommendations"]])
     final_recs_data['last_keyword'] = final_keyword
-    session['last_successful_recommendations'] = final_recs_data
+    
+    # REMOVED the line that caused the error. The session will no longer store the large results data.
+    
     session.modified = True
     return jsonify({"type": "recommendation", "data": final_recs_data})
 
