@@ -446,14 +446,17 @@ body {
     display: block; 
     text-align: center; 
     padding: var(--spacing-md); 
-    text-decoration: none; 
+    border: none;
+    width: 100%;
     border-radius: var(--border-radius); 
     margin-top: auto; 
     font-weight: 600; 
+    font-size: 1rem;
     flex-shrink: 0; 
     background: linear-gradient(135deg, var(--primary-accent), var(--primary-accent-dark)); 
     color: white; 
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+    cursor: pointer;
 }
 
 .card-link:hover { 

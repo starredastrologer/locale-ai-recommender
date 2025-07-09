@@ -153,12 +153,51 @@
                     <p class="card-rating">⭐ ${place.rating || 'N/A'} (${place.user_ratings_total || 0} ratings)</p>
                     <p class="travel-time">🚗 ${place.travel_time || 'Travel time not available'}</p>
                     ${reviewHtml}
-                    <a href="${place.link}" target="_blank" class="card-link" rel="noopener noreferrer">Open in Maps</a>
+                    <button class="card-link" onclick="openMaps('${place.place_id}', '${place.place_name_encoded}', '${place.maps_url}', '${place.fallback_url}')">Open in Maps</button>
                 `;
                 
                 card.querySelector('.bookmark-btn').addEventListener('click', (e) => toggleBookmark(e, place));
                 return card;
             }
+
+            // Universal Maps opening function that works on all devices
+            window.openMaps = function(placeId, placeName, mapsUrl, fallbackUrl) {
+                const userAgent = navigator.userAgent.toLowerCase();
+                const isIOS = /iphone|ipad|ipod/.test(userAgent);
+                const isAndroid = /android/.test(userAgent);
+                const isMobile = isIOS || isAndroid;
+                
+                let mapUrl;
+                
+                if (isIOS) {
+                    // iOS: Try Apple Maps first, fallback to Google Maps
+                    mapUrl = `maps://maps.apple.com/?q=${placeName}&sll=0,0&z=10&t=m`;
+                    
+                    // Try to open Apple Maps
+                    const appleLink = document.createElement('a');
+                    appleLink.href = mapUrl;
+                    appleLink.click();
+                    
+                    // Fallback to Google Maps after a short delay if Apple Maps doesn't open
+                    setTimeout(() => {
+                        window.open(`https://maps.google.com/maps?q=${placeName}`, '_blank', 'noopener,noreferrer');
+                    }, 1000);
+                    
+                } else if (isAndroid) {
+                    // Android: Use Google Maps intent
+                    mapUrl = `intent://maps.google.com/maps?q=place_id:${placeId}#Intent;scheme=https;package=com.google.android.apps.maps;end`;
+                    window.location.href = mapUrl;
+                    
+                    // Fallback to web version
+                    setTimeout(() => {
+                        window.open(mapsUrl, '_blank', 'noopener,noreferrer');
+                    }, 1500);
+                    
+                } else {
+                    // Desktop: Open Google Maps in new tab
+                    window.open(mapsUrl, '_blank', 'noopener,noreferrer');
+                }
+            };
 
             function displayResults(data) {
                 appState.currentRecommendations = data;

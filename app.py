@@ -116,8 +116,10 @@ def get_final_recommendation(conversation_history, places_data, origin):
         for pid in recommended_ids:
             if pid in full_data_map:
                 place_data = full_data_map[pid]
-                # --- FIXED: Universal Maps URL that works on all devices ---
-                place_data['link'] = f"https://maps.google.com/?q=place_id:{pid}"
+                # --- UNIVERSAL: Multi-platform Maps URL that works everywhere ---
+                place_data['maps_url'] = f"https://maps.google.com/?q=place_id:{pid}"
+                place_data['fallback_url'] = f"https://www.google.com/maps/place/?q=place_id:{pid}"
+                place_data['place_name_encoded'] = place_data.get('name', '').replace(' ', '+')
                 place_data['travel_time'] = travel_times.get(pid, 'N/A')
                 final_recs.append(place_data)
         return {"recommendations": final_recs}

@@ -78,10 +78,44 @@
                     <img src="${mainPhoto}" alt="${place.name}" class="card-photo">
                     <h3 class="card-title">${place.name}</h3>
                     <p class="card-rating">⭐ ${place.rating || 'N/A'} (${place.user_ratings_total || 0} ratings)</p>
-                    <a href="${place.link}" target="_blank" class="card-link" rel="noopener noreferrer">Open in Maps</a>
+                    <button class="card-link" onclick="openMaps('${place.place_id}', '${place.place_name_encoded || place.name.replace(/'/g, '').replace(/ /g, '+')}', '${place.maps_url || `https://maps.google.com/?q=place_id:${place.place_id}`}', '${place.fallback_url || `https://www.google.com/maps/place/?q=place_id:${place.place_id}`}')">Open in Maps</button>
                 `;
                 return card;
             }
+            
+            // Universal Maps opening function (same as in app.html)
+            window.openMaps = function(placeId, placeName, mapsUrl, fallbackUrl) {
+                const userAgent = navigator.userAgent.toLowerCase();
+                const isIOS = /iphone|ipad|ipod/.test(userAgent);
+                const isAndroid = /android/.test(userAgent);
+                
+                if (isIOS) {
+                    // iOS: Try Apple Maps first
+                    const appleMapUrl = `maps://maps.apple.com/?q=${placeName}&sll=0,0&z=10&t=m`;
+                    const appleLink = document.createElement('a');
+                    appleLink.href = appleMapUrl;
+                    appleLink.click();
+                    
+                    // Fallback to Google Maps
+                    setTimeout(() => {
+                        window.open(`https://maps.google.com/maps?q=${placeName}`, '_blank', 'noopener,noreferrer');
+                    }, 1000);
+                    
+                } else if (isAndroid) {
+                    // Android: Use Google Maps intent
+                    const intentUrl = `intent://maps.google.com/maps?q=place_id:${placeId}#Intent;scheme=https;package=com.google.android.apps.maps;end`;
+                    window.location.href = intentUrl;
+                    
+                    // Fallback to web version
+                    setTimeout(() => {
+                        window.open(mapsUrl || `https://maps.google.com/?q=place_id:${placeId}`, '_blank', 'noopener,noreferrer');
+                    }, 1500);
+                    
+                } else {
+                    // Desktop: Open Google Maps in new tab
+                    window.open(mapsUrl || `https://maps.google.com/?q=place_id:${placeId}`, '_blank', 'noopener,noreferrer');
+                }
+            };
         });
     </script>
 </body>
