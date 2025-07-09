@@ -12,7 +12,6 @@
 
         <!-- Location Prompt Screen -->
         <div id="location-container" class="state-container active">
-            <!-- FIX #3: Replaced text logo with image logo -->
             <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="small-logo-img">
             <h2>Let's Find Your Location 🌍</h2>
             <p class="prompt-text">To discover the best spots near you, please grant location access when your browser asks.</p>
@@ -21,7 +20,6 @@
 
         <!-- Distance Selection Screen -->
         <div id="distance-container" class="state-container">
-             <!-- FIX #3: Replaced text logo with image logo -->
             <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="small-logo-img">
             <h2>How far are you willing to travel? 🚗</h2>
             <p class="prompt-text">Select an estimated travel time.</p>
@@ -36,7 +34,6 @@
 
         <!-- Loading Screen -->
         <div id="loading-container" class="state-container">
-            <!-- FIX #3: Replaced text logo with image logo -->
             <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="small-logo-img">
             <h2 id="loading-text">Consulting the cosmos... ✨</h2>
             <div class="spinner"></div>
@@ -86,6 +83,45 @@
                 }
             }
 
+            // --- FIX #3: LOCATION PERMISSION LOGIC ---
+            function initializeLocation() {
+                // Check sessionStorage for an existing location
+                const savedLocation = sessionStorage.getItem('userLocation');
+                if (savedLocation) {
+                    try {
+                        appState.location = JSON.parse(savedLocation);
+                        // If location is found, skip the permission screen
+                        showState('distance'); 
+                    } catch (e) {
+                        // If stored data is corrupt, clear it and show the permission screen
+                        sessionStorage.removeItem('userLocation');
+                        showState('location');
+                    }
+                } else {
+                    // If no location is saved, show the permission screen
+                    showState('location');
+                }
+            }
+            
+            function requestLocation() {
+                 if (!navigator.geolocation) {
+                    showState('error', { message: 'Geolocation is not supported by your browser.' });
+                    return;
+                }
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        appState.location = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude,
+                        };
+                        // Save the newly acquired location to sessionStorage
+                        sessionStorage.setItem('userLocation', JSON.stringify(appState.location));
+                        showState('distance');
+                    },
+                    () => showState('error', { message: 'Location access was denied. This app requires your location to find nearby places.' })
+                );
+            }
+
             async function fetchRecommendations(body) {
                 showState('loading');
                 try {
@@ -104,25 +140,9 @@
             function createRecommendationCard(place) {
                 const card = document.createElement('div');
                 card.className = 'recommendation-card';
-                
-                const mainPhoto = place.photo_urls && place.photo_urls.length > 0 
-                    ? place.photo_urls[0] 
-                    : 'https://via.placeholder.com/350x200/181818/B3B3B3?text=No+Image+Available';
-
-                // --- FIX #1: CORRECTLY DISPLAY THE REVIEW TEXT ---
-                // We check if reviews exist, if the first review exists, and if it has a 'text' property.
-                const reviewText = (place.reviews && place.reviews[0] && place.reviews[0].text)
-                    ? `"${place.reviews[0].text}"`
-                    : 'No top review available.';
-
-                const reviewHtml = `
-                    <div class="card-review">
-                        <details>
-                            <summary>Show top review</summary>
-                            <p>${reviewText}</p>
-                        </details>
-                    </div>`;
-
+                const mainPhoto = place.photo_urls && place.photo_urls.length > 0 ? place.photo_urls[0] : 'https://via.placeholder.com/350x200/181818/B3B3B3?text=No+Image+Available';
+                const reviewText = (place.reviews && place.reviews[0] && place.reviews[0].text) ? `"${place.reviews[0].text}"` : 'No top review available.';
+                const reviewHtml = `<div class="card-review"><details><summary>Show top review</summary><p>${reviewText}</p></details></div>`;
                 const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || {};
                 const isBookmarked = bookmarks[place.place_id] ? 'bookmarked' : '';
 
@@ -174,25 +194,12 @@
                 if (history.length > 10) history.shift();
                 localStorage.setItem('searchHistory', JSON.stringify(history));
             }
-
-            document.getElementById('grant-location-button').addEventListener('click', () => {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        appState.location = { lat: position.coords.latitude, lng: position.coords.longitude };
-                        showState('distance');
-                    },
-                    () => showState('error', { message: 'Location access was denied. This app requires your location.' })
-                );
-            });
+            
+            document.getElementById('grant-location-button').addEventListener('click', requestLocation);
 
             document.querySelectorAll('.distance-button').forEach(button => {
                 button.addEventListener('click', () => {
-                    fetchRecommendations({
-                        query: document.getElementById('initial-query').value,
-                        location: appState.location,
-                        distance: button.dataset.distance,
-                        is_feedback: false
-                    });
+                    fetchRecommendations({ query: document.getElementById('initial-query').value, location: appState.location, distance: button.dataset.distance, is_feedback: false });
                 });
             });
             
@@ -209,7 +216,10 @@
                 input.value = '';
             });
             
-            document.getElementById('restart-button').addEventListener('click', () => window.location.href = '/');
+            document.getElementById('restart-button').addEventListener('click', () => {
+                sessionStorage.removeItem('userLocation'); // Clear location on restart
+                window.location.href = '/';
+            });
 
             function handleApiResponse(response) {
                 if (!response) return;
@@ -222,6 +232,9 @@
                     default: showState('error', { message: response.content || 'An unknown error occurred.' }); break;
                 }
             }
+            
+            // --- This is the new starting point ---
+            initializeLocation();
         });
     </script>
 </body>
