@@ -1,7 +1,10 @@
+--- START OF FILE locale-ai-recommender-main/app.py ---
+
 import os
 import json
 import requests
 import openai
+import urllib.parse
 from flask import Flask, render_template, request, jsonify, session
 
 # --- Configuration ---
@@ -117,7 +120,7 @@ def get_final_recommendation(conversation_history, places_data, origin):
             if pid in full_data_map:
                 place_data = full_data_map[pid]
                 # Using Google Maps search URL with location name and place_id for better compatibility
-                place_name = place_data.get('name', '').replace(' ', '+')
+                place_name = urllib.parse.quote_plus(place_data.get('name', ''))
                 place_data['link'] = f"https://www.google.com/maps/search/?api=1&query={place_name}&query_place_id={pid}"
                 place_data['travel_time'] = travel_times.get(pid, 'N/A')
                 final_recs.append(place_data)
