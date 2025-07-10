@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Refine Your Plan | Localē</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* Scoped styles for this page */
+        .refine-container {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: var(--spacing-xl);
+            text-align: center;
+            animation: fadeInUp 0.8s ease-out;
+        }
+        .refinement-group {
+            margin-bottom: var(--spacing-2xl);
+        }
+        .refinement-group h3 {
+            font-size: 1.3rem;
+            color: var(--text-medium);
+            margin-bottom: var(--spacing-lg);
+            font-weight: 500;
+        }
+        .refinement-options {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: var(--spacing-md);
+        }
+        .refinement-option {
+            padding: var(--spacing-md) var(--spacing-xl);
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            background: var(--bg-card);
+            color: var(--text-light);
+            transition: all 0.3s ease;
+        }
+        .refinement-option:hover {
+            background: var(--bg-card-hover);
+            transform: translateY(-2px);
+            border-color: var(--primary-accent);
+        }
+        .refinement-option.selected {
+            background: var(--primary-accent);
+            color: white;
+            border-color: var(--primary-accent-dark);
+            box-shadow: 0 8px 25px rgba(30, 215, 96, 0.2);
+        }
+        .optional-input {
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+            padding: var(--spacing-md) var(--spacing-lg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            background-color: var(--bg-card);
+            color: var(--text-light);
+            font-size: 1rem;
+            outline: none;
+        }
+        .optional-input:focus {
+             border-color: var(--primary-accent);
+        }
+        .button-group {
+            margin-top: var(--spacing-2xl);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+        .surprise-me-button {
+             background: transparent;
+             border: 1px solid var(--border-light);
+             color: var(--text-medium);
+        }
+         .surprise-me-button:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-light);
+         }
+    </style>
+</head>
+<body>
+    <div class="refine-container">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="small-logo-img">
+        <h2>{{ plan.display_title }}</h2>
+        <p class="prompt-text">A few quick questions to find the perfect spot. Or, just let us surprise you!</p>
+
+        <form action="/app" method="post">
+            <input type="hidden" name="plan_id" value="{{ plan_id }}">
+
+            {% for question in plan.questions %}
+            <div class="refinement-group">
+                <h3>{{ question.text }}</h3>
+                {% if question.type == 'multiple_choice' %}
+                <div class="refinement-options" data-question-id="{{ question.id }}">
+                    {% for option in question.options %}
+                    <div class="refinement-option" data-value="{{ option.value }}">{{ option.display_text }}</div>
+                    {% endfor %}
+                </div>
+                <input type="hidden" name="{{ question.id }}" id="input-{{ question.id }}">
+                {% elif question.type == 'text_input' %}
+                 <input type="text" name="{{ question.id }}" class="optional-input" placeholder="{{ question.options[0].display_text }}">
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <div class="button-group">
+                <button type="submit" name="action" value="get_recommendations" class="primary-action-button">Find My Spot</button>
+                <button type="submit" name="action" value="surprise_me" class="primary-action-button surprise-me-button">✨ Just Surprise Me</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const refinementGroups = document.querySelectorAll('.refinement-options');
+            refinementGroups.forEach(group => {
+                const questionId = group.dataset.questionId;
+                const hiddenInput = document.getElementById(`input-${questionId}`);
+                const options = group.querySelectorAll('.refinement-option');
+
+                options.forEach(option => {
+                    option.addEventListener('click', () => {
+                        // Deselect other options in the same group
+                        options.forEach(opt => opt.classList.remove('selected'));
+                        
+                        // Select the clicked option
+                        option.classList.add('selected');
+                        hiddenInput.value = option.dataset.value;
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>
