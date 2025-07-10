@@ -5,8 +5,57 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Localē - AI Powered Discovery</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-lg);
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .plan-button {
+            padding: var(--spacing-lg) var(--spacing-md);
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            background: var(--bg-card);
+            color: var(--text-light);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 100%;
+            text-align: center;
+        }
+        .plan-button:hover {
+            background: var(--bg-card-hover);
+            transform: translateY(-2px);
+            border-color: var(--primary-accent);
+            box-shadow: 0 8px 25px var(--shadow-medium);
+        }
+        .section-divider {
+            text-align: center;
+            margin: var(--spacing-2xl) auto;
+            color: var(--text-dim);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            max-width: 600px;
+        }
+        .section-divider::before, .section-divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .section-divider:not(:empty)::before {
+            margin-right: .5em;
+        }
+        .section-divider:not(:empty)::after {
+            margin-left: .5em;
+        }
+    </style>
 </head>
 <body>
     <div class="landing-container">
@@ -14,15 +63,32 @@
             <a href="/history" class="history-link">📜 My History</a>
         </header>
         <main class="hero-section">
-            <!-- FIX #3: Replaced text logo with image logo -->
             <img src="{{ url_for('static', filename='logo.png') }}" alt="Localē Logo" class="hero-logo-img">
+            
+            <!-- Path 1: Specific Search -->
             <div class="hero-text">
-                <h2>Discover Your Next Favorite Spot. Instantly.</h2>
-                <p>Tired of endless scrolling? 😴 Tell us what you're looking for, and our AI will find the perfect place based on atmosphere, reviews, and real-world data.</p>
+                <h2>Have something specific in mind?</h2>
             </div>
             <form action="/app" method="post" class="landing-form">
                 <input type="text" name="query" placeholder="e.g., a cozy cafe with late hours..." required>
                 <button type="submit">Let's Go! 🚀</button>
+            </form>
+
+            <div class="section-divider">OR</div>
+
+            <!-- Path 2: Guided Plans -->
+            <div class="hero-text">
+                 <h2>Choose a plan and let us guide you.</h2>
+            </div>
+            <form action="/refine" method="post">
+                <div class="plans-grid">
+                    <button type="submit" name="plan_id" value="date_night" class="plan-button">🥂 Casual Date Night</button>
+                    <button type="submit" name="plan_id" value="client_dinner" class="plan-button">👔 Impress a Client</button>
+                    <button type="submit" name="plan_id" value="birthday_celebration" class="plan-button">🎉 Birthday Celebration</button>
+                    <button type="submit" name="plan_id" value="coffee_focus" class="plan-button">☕️ Coffee & Focus</button>
+                    <button type="submit" name="plan_id" value="family_dinner" class="plan-button">👨‍👩‍👧 Family Dinner</button>
+                    <button type="submit" name="plan_id" value="hidden_gem" class="plan-button">💎 A Hidden Gem</button>
+                </div>
             </form>
         </main>
     </div>
