@@ -1,11 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My History | Localē</title>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -44,6 +42,8 @@
             // --- Load Bookmarks ---
             const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || {};
             if (Object.keys(bookmarks).length > 0) {
+                // Bookmarks are an object, so their order isn't guaranteed chronologically.
+                // Displaying them as they are stored.
                 Object.values(bookmarks).forEach(place => {
                     const card = createHistoryCard(place);
                     bookmarkWrapper.appendChild(card);
@@ -55,11 +55,14 @@
             // --- Load History ---
             const history = JSON.parse(localStorage.getItem('searchHistory')) || [];
             if (history.length > 0) {
-                 [...history].reverse().forEach(item => { // Show most recent first
+                 // The 'saveToHistory' function already saves the newest item at the start of the array.
+                 // We just need to loop through it directly without reversing.
+                 history.forEach(item => { // CORRECTED: Removed .reverse() to show most recent first
                     const historyItem = document.createElement('div');
                     historyItem.className = 'history-item';
                     
                     let placesList = '<ul>';
+                    // The recommendations array within the history item is already sorted by relevance
                     item.recommendations.forEach(place => {
                         placesList += `<li><a href="${place.link}" target="_blank">${place.name}</a></li>`;
                     });
