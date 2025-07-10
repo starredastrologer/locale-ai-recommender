@@ -14,11 +14,109 @@ GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 openai.api_key = OPENAI_API_KEY
 
-# --- Helper Functions ---
+# --- NEW: The Plan Book ---
+# This dictionary holds the logic for our guided "Plans"
+plan_book = {
+    "date_night": {
+        "display_title": "for a Casual Date Night",
+        "base_prompt": "A spot for a date that is relaxed, cozy, and intimate, suitable for conversation. It shouldn't be too loud or overly expensive. Atmosphere is more important than a specific food type.",
+        "questions": [
+            {"id": "vibe", "text": "What's the vibe?", "type": "multiple_choice", "options": [
+                {"value": "cozy_romantic", "display_text": "Cozy & Romantic"},
+                {"value": "lively_fun", "display_text": "Lively & Fun"},
+                {"value": "trendy_modern", "display_text": "Trendy & Modern"}
+            ]},
+            {"id": "budget", "text": "What's the budget?", "type": "multiple_choice", "options": [
+                {"value": "budget_friendly", "display_text": "💰"},
+                {"value": "nice_treat", "display_text": "💰💰"},
+                {"value": "splurge", "display_text": "💰💰💰"}
+            ]},
+            {"id": "cuisine", "text": "Any specific cuisine in mind? (Optional)", "type": "text_input", "options": [{"display_text": "e.g., Italian, Sushi, Tacos..."}]}
+        ]
+    },
+    "client_dinner": {
+        "display_title": "to Impress a Client",
+        "base_prompt": "A professional, impressive restaurant with high-quality service and excellent food. It should be relatively quiet and suitable for a business meeting. Price is a secondary concern to quality and atmosphere.",
+        "questions": [
+             {"id": "formality", "text": "How formal should it be?", "type": "multiple_choice", "options": [
+                {"value": "business_casual", "display_text": "Business Casual"},
+                {"value": "formal_dining", "display_text": "Formal Dining"},
+                {"value": "modern_upscale", "display_text": "Modern & Upscale"}
+            ]},
+            {"id": "cuisine", "text": "Preferred cuisine? (e.g., Steakhouse, Japanese)", "type": "text_input", "options": [{"display_text": "Leave blank for best overall"}]}
+        ]
+    },
+    "birthday_celebration": {
+        "display_title": "for a Birthday Celebration",
+        "base_prompt": "A fun, celebratory, and lively place suitable for a group. It should feel special but not necessarily formal. Good for photos and a festive atmosphere.",
+        "questions": [
+            {"id": "group_size", "text": "How large is the group?", "type": "multiple_choice", "options": [
+                {"value": "small_group", "display_text": "Small (2-4)"},
+                {"value": "medium_group", "display_text": "Medium (5-8)"},
+                {"value": "large_group", "display_text": "Large (8+)"}
+            ]},
+            {"id": "vibe", "text": "What's the vibe?", "type": "multiple_choice", "options": [
+                {"value": "party_atmosphere", "display_text": "Party Atmosphere"},
+                {"value": "family_friendly", "display_text": "Family Friendly"},
+                {"value": "upscale_celebration", "display_text": "Upscale & Classy"}
+            ]},
+            {"id": "budget", "text": "What's the budget per person?", "type": "multiple_choice", "options": [
+                {"value": "budget_friendly", "display_text": "Under $30"},
+                {"value": "nice_treat", "display_text": "$30 - $60"},
+                {"value": "splurge", "display_text": "$60+"}
+            ]}
+        ]
+    },
+    "coffee_focus": {
+        "display_title": "for Coffee & Focus",
+        "base_prompt": "A coffee shop with a good atmosphere for focusing or having a quiet conversation.",
+        "questions": [
+             {"id": "primary_goal", "text": "What's the main goal?", "type": "multiple_choice", "options": [
+                {"value": "get_work_done", "display_text": "💻 Get Work Done"},
+                {"value": "catch_up", "display_text": "🗣️ Catch Up with a Friend"},
+                {"value": "read_a_book", "display_text": "📖 Read a Book"}
+            ]},
+            {"id": "noise_level", "text": "Preferred noise level?", "type": "multiple_choice", "options": [
+                {"value": "quiet", "display_text": "🤫 Pin-drop Quiet"},
+                {"value": "background_buzz", "display_text": "🎶 Background Buzz"},
+                {"value": "doesnt_matter", "display_text": "Any"}
+            ]}
+        ]
+    },
+    "family_dinner": {
+        "display_title": "for a Family Dinner",
+        "base_prompt": "A comfortable, family-friendly restaurant. It should be welcoming to all ages, not too loud, and have a broad menu that can satisfy different tastes.",
+        "questions": [
+            {"id": "ages", "text": "Are there young children?", "type": "multiple_choice", "options": [
+                {"value": "with_kids", "display_text": "Yes, with kids"},
+                {"value": "all_adults", "display_text": "No, all adults/teens"}
+            ]},
+            {"id": "price", "text": "What's the price point?", "type": "multiple_choice", "options": [
+                {"value": "casual_cheap", "display_text": "Casual & Cheap"},
+                {"value": "mid_range", "display_text": "Mid-Range"},
+                {"value": "special_occasion", "display_text": "A Special Occasion"}
+            ]},
+            {"id": "cuisine", "text": "Any food preferences?", "type": "text_input", "options": [{"display_text": "e.g., Pizza, American, Chinese"}]}
+        ]
+    },
+    "hidden_gem": {
+        "display_title": "to Find a Hidden Gem",
+        "base_prompt": "A unique, non-touristy, and highly-rated spot that feels like a local secret. It could be any type of place - a cafe, a bar, a small restaurant, or a unique shop. The key is authenticity and a sense of discovery.",
+        "questions": [
+             {"id": "type_of_gem", "text": "What kind of gem are you seeking?", "type": "multiple_choice", "options": [
+                {"value": "food_drink", "display_text": "Food & Drink"},
+                {"value": "experience_shop", "display_text": "Experience / Shop"},
+                {"value": "any_gem", "display_text": "Surprise Me"}
+            ]}
+        ]
+    }
+}
+
+
+# --- Helper Functions (No changes to the functions below, only the routes) ---
 
 def moderate_query(user_input):
     """Uses an LLM to check if a query violates safety policies."""
-    # --- REPLACED WITH THE NEW, MORE PRECISE PROMPT ---
     moderation_prompt = f"""
     You are a content safety moderator for a local business search app. Your goal is to flag ONLY a very narrow set of harmful queries. You must allow searches for all legal businesses, including those for adults.
 
@@ -41,10 +139,6 @@ def moderate_query(user_input):
         print(f"Moderation check failed: {e}"); return False
 
 def refine_query_with_llm(conversation_history):
-    """
-    Takes the entire conversation history with the user and uses a powerful AI
-    model (GPT-4o mini) to create a single, perfect search keyword for Google Maps.
-    """
     system_prompt = """
     You are an expert conversational query refiner for the Google Maps Places API. Your primary goal is to combine the user's entire conversation history into a single, optimized 5-6 word keyword phrase for the API.
 
@@ -71,9 +165,6 @@ def refine_query_with_llm(conversation_history):
         print(f"Error in refine_query_with_llm: {e}"); return {"type": "error", "content": "Sorry, I had trouble refining your query."}
 
 def get_nearby_places(location, keyword, radius):
-    """
-    Searches the Google Maps API for places matching a keyword near a specific location.
-    """
     url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
     params = {'location': f"{location['lat']},{location['lng']}", 'radius': radius, 'keyword': keyword, 'key': GOOGLE_MAPS_API_KEY}
     try:
@@ -82,15 +173,9 @@ def get_nearby_places(location, keyword, radius):
         print(f"Error in get_nearby_places: {e}"); return None
 
 def get_place_details_and_photos(place_id):
-    """
-    Gets detailed information for a single place, including rating, reviews, photos,
-    and other critical metadata for AI ranking.
-    """
     details_url = "https://maps.googleapis.com/maps/api/place/details/json"
-    # --- UPDATED FIELDS ---
     fields_to_request = 'name,place_id,rating,reviews,photos,user_ratings_total,price_level,types,editorial_summary,wheelchair_accessible_entrance'
     params = {'place_id': place_id, 'fields': fields_to_request, 'key': GOOGLE_MAPS_API_KEY}
-    
     try:
         response = requests.get(details_url, params=params); response.raise_for_status()
         details = response.json().get('result', {})
@@ -100,10 +185,6 @@ def get_place_details_and_photos(place_id):
         print(f"Error in get_place_details_and_photos: {e}"); return None
 
 def get_travel_times(origin, place_ids):
-    """
-    Uses the Google Maps Distance Matrix API to calculate the travel time from
-    the user's location to a list of recommended places.
-    """
     if not place_ids: return {}
     url = "https://maps.googleapis.com/maps/api/distancematrix/json"
     params = {'origins': f"{origin['lat']},{origin['lng']}", 'destinations': '|'.join([f"place_id:{pid}" for pid in place_ids]), 'key': GOOGLE_MAPS_API_KEY}
@@ -115,38 +196,23 @@ def get_travel_times(origin, place_ids):
         print(f"Error getting travel times: {e}"); return {}
 
 def get_final_recommendation(conversation_history, places_data, origin):
-    """
-    Uses a powerful AI to analyze, score, and rank a list of places based on
-    user's conversation, place details, and travel time.
-    """
     if not places_data: return None
-
-    # Get all the place IDs from the detailed data we've fetched.
     place_ids_to_rank = [p['place_id'] for p in places_data if 'place_id' in p]
     if not place_ids_to_rank: return None
-    
-    # Call the Distance Matrix API for all candidates *before* calling the LLM.
     travel_times_map = get_travel_times(origin, place_ids_to_rank)
-
-    # Include all rich data in the payload for the LLM
     lean_data_for_llm = []
     for p in places_data:
         place_id = p.get('place_id')
         if place_id:
             lean_data_for_llm.append({
-                'place_id': place_id,
-                'name': p.get('name'),
-                'types': p.get('types', []),
-                'rating': p.get('rating'),
-                'review_count': p.get('user_ratings_total'),
-                'price_level': p.get('price_level'),
-                'travel_time': travel_times_map.get(place_id, 'N/A'),
+                'place_id': place_id, 'name': p.get('name'), 'types': p.get('types', []),
+                'rating': p.get('rating'), 'review_count': p.get('user_ratings_total'),
+                'price_level': p.get('price_level'), 'travel_time': travel_times_map.get(place_id, 'N/A'),
                 'wheelchair_accessible': p.get('wheelchair_accessible_entrance'),
                 'summary': p.get('editorial_summary', {}).get('overview', 'No summary available.'),
-                'reviews': [r.get('text', '') for r in p.get('reviews', [])[:5]] # Increased to 5 reviews
+                'reviews': [r.get('text', '') for r in p.get('reviews', [])[:5]]
             })
 
-    # --- NEW, ADVANCED SYSTEM PROMPT ---
     system_prompt = """
     You are an expert local guide and recommendation concierge. Your goal is to analyze a list of potential places and rank them according to a user's specific request. You must provide a structured, reasoned analysis for your rankings.
 
@@ -163,53 +229,16 @@ def get_final_recommendation(conversation_history, places_data, origin):
     6.  Return a single JSON object containing a key "ranked_recommendations". The value should be a list of all analyzed places, sorted from highest `final_score` to lowest.
 
     **OUTPUT FORMAT (Strict):**
-    {
-      "ranked_recommendations": [
-        {
-          "place_id": "string",
-          "name": "string",
-          "relevance_score": integer,
-          "quality_score": integer,
-          "vibe_score": integer,
-          "convenience_score": integer,
-          "final_score": float,
-          "justification": "string"
-        },
-        ...
-      ]
-    }
+    { "ranked_recommendations": [ { "place_id": "string", "name": "string", "relevance_score": integer, "quality_score": integer, "vibe_score": integer, "convenience_score": integer, "final_score": float, "justification": "string" }, ... ] }
     """
-    
-    user_prompt = f"""
-    User's conversation history:
-    ---
-    {conversation_history}
-    ---
-    
-    Data for the places to rank:
-    ---
-    {json.dumps(lean_data_for_llm, indent=2)}
-    ---
-    
-    Please provide your ranked analysis in the specified JSON format.
-    """
+    user_prompt = f"User's conversation history:\n---\n{conversation_history}\n---\n\nData for the places to rank:\n---\n{json.dumps(lean_data_for_llm, indent=2)}\n---\n\nPlease provide your ranked analysis in the specified JSON format."
 
     try:
-        response = openai.chat.completions.create(
-            model="gpt-4o-mini",
-            response_format={"type": "json_object"},
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ]
-        )
+        response = openai.chat.completions.create(model="gpt-4o-mini", response_format={"type": "json_object"}, messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}])
         llm_output = json.loads(response.choices[0].message.content)
-        
         ranked_recs_from_llm = llm_output.get("ranked_recommendations", [])
         if not ranked_recs_from_llm: return None
-
         full_data_map = {p.get('place_id'): p for p in places_data}
-        
         final_recs = []
         for llm_item in ranked_recs_from_llm:
             pid = llm_item.get('place_id')
@@ -218,12 +247,8 @@ def get_final_recommendation(conversation_history, places_data, origin):
                 place_name = urllib.parse.quote_plus(place_data.get('name', ''))
                 place_data['link'] = f"https://www.google.com/maps/search/?api=1&query={place_name}&query_place_id={pid}"
                 place_data['travel_time'] = travel_times_map.get(pid, 'N/A')
-                # We DO NOT add the justification or scores to the final output.
-                # The final object remains clean for the user.
                 final_recs.append(place_data)
-        
         return {"recommendations": final_recs}
-        
     except Exception as e:
         print(f"Error in get_final_recommendation: {e}"); return None
 
@@ -232,9 +257,53 @@ def get_final_recommendation(conversation_history, places_data, origin):
 def home():
     session.clear(); return render_template("index.html")
 
+# --- NEW ROUTE: To show the refinement screen ---
+@app.route("/refine", methods=["POST"])
+def refine_page():
+    session.clear()
+    plan_id = request.form.get("plan_id")
+    if plan_id and plan_id in plan_book:
+        return render_template("refine.html", plan_id=plan_id, plan=plan_book[plan_id])
+    return redirect(url_for('home'))
+
 @app.route("/app", methods=["POST"])
 def app_page():
-    session.clear(); session['initial_query'] = request.form.get("query"); return render_template("app.html")
+    session.clear()
+    form_data = request.form
+
+    # Case 1: User used the standard search bar
+    if 'query' in form_data and form_data.get('query'):
+        session['initial_query'] = form_data.get('query')
+        session['display_title'] = "for your search"
+        return render_template("app.html")
+
+    # Case 2: User used the "Plans" feature
+    elif 'plan_id' in form_data:
+        plan_id = form_data.get('plan_id')
+        plan = plan_book.get(plan_id)
+        if not plan:
+            return redirect(url_for('home'))
+
+        # Start with the base prompt for the plan
+        initial_prompt = [plan['base_prompt']]
+        session['display_title'] = plan['display_title']
+        
+        # If the user submitted refinements (and didn't click "Surprise Me")
+        if form_data.get('action') == 'get_recommendations':
+            for question in plan['questions']:
+                q_id = question['id']
+                if q_id in form_data and form_data[q_id]:
+                    # This is a simplistic way to add refinement text.
+                    # A more advanced version could have specific text per option.
+                    initial_prompt.append(f"For '{question['text']}', the user specified '{form_data[q_id]}'.")
+        
+        # Join all parts into a single, rich initial query
+        session['initial_query'] = " ".join(initial_prompt)
+        return render_template("app.html")
+    
+    # Fallback if the form is invalid
+    return redirect(url_for('home'))
+
 
 @app.route("/get_recommendation", methods=["POST"])
 def get_recommendation_route():
@@ -276,14 +345,12 @@ def get_recommendation_route():
     if not unseen_places:
         return jsonify({"type": "error", "content": "I couldn't find any new places matching your refined search. Try broadening your criteria or starting a new search."})
     
-    # Increase the number of places we analyze from 7 to 15
     detailed_places = [get_place_details_and_photos(p.get('place_id')) for p in unseen_places[:15] if p.get('place_id')]
     final_recs_data = get_final_recommendation(session['conversation'], [d for d in detailed_places if d], location)
 
     if not final_recs_data or not final_recs_data.get("recommendations"):
         return jsonify({"type": "error", "content": "The AI had trouble picking final recommendations. Please try again."})
 
-    # Exclude all places that were considered in this round from future rounds
     session['excluded_ids'].extend([p.get('place_id') for p in detailed_places])
     final_recs_data['last_keyword'] = final_keyword
     
