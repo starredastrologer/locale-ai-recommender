@@ -18,10 +18,24 @@ openai.api_key = OPENAI_API_KEY
 
 def moderate_query(user_input):
     """Uses an LLM to check if a query violates safety policies."""
-    moderation_prompt = f"""You are a content moderator. Flag a query as "inappropriate" if it is sexually explicit, hateful, violent, promotes illegal acts or substances (drugs), or is malicious harassment. Respond with a single word: "safe" or "inappropriate". Query: "{user_input}" """
+    # --- REPLACED WITH THE NEW, MORE PRECISE PROMPT ---
+    moderation_prompt = f"""
+    You are a content safety moderator for a local business search app. Your goal is to flag ONLY a very narrow set of harmful queries. You must allow searches for all legal businesses, including those for adults.
+
+    ALLOWED (mark as "safe"): Any queries for legal businesses, including bars, wineries, breweries, strip clubs, adult stores, and cannabis dispensaries. Use of slang like "killer view" or "food to die for" is also safe.
+
+    INAPPROPRIATE (mark as "inappropriate"): ONLY flag queries that are:
+    1. Seeking illegal hard drugs (e.g., cocaine, heroin).
+    2. Requesting pornography or illegal sexual content.
+    3. Genuinely hateful, harassing, or promoting self-harm.
+
+    Respond with a single word: "safe" or "inappropriate".
+
+    Query: "{user_input}"
+    """
     try:
-        response = openai.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "system", "content": moderation_prompt}], temperature=0, max_tokens=5)
-        decision = response.choices[0].message.content.strip().lower()
+        response = openai.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "system", "content": "You are a content safety moderator."}, {"role": "user", "content": moderation_prompt}], temperature=0, max_tokens=5)
+        decision = response.choices[0].message.content.strip().lower().replace('"', '').replace('.', '')
         return decision == "safe"
     except Exception as e:
         print(f"Moderation check failed: {e}"); return False
