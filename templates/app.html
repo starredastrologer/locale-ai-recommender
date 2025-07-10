@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finding your spot... | Localē</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="app-container">
         <input type="hidden" id="initial-query" value="{{ session.get('initial_query', '') }}">
+        <input type="hidden" id="display-title" value="{{ session.get('display_title', '') }}">
 
         <!-- Location Prompt Screen -->
         <div id="location-container" class="state-container active">
@@ -74,10 +74,9 @@
             const states = ['location', 'distance', 'loading', 'results', 'feedback', 'error'];
             const appState = { location: null, currentRecommendations: null };
             
-            // --- NEW: State for ranked results and "Show More" functionality ---
             let allRankedRecommendations = [];
             let currentlyDisplayedCount = 0;
-            const displayIncrement = 3; // Show 3 new results at a time
+            const displayIncrement = 3; 
 
             function showState(stateName, data = {}) {
                 states.forEach(s => document.getElementById(`${s}-container`).classList.remove('active'));
@@ -90,7 +89,6 @@
                 }
             }
 
-            // --- FIX #3: LOCATION PERMISSION LOGIC ---
             function initializeLocation() {
                 const savedLocation = sessionStorage.getItem('userLocation');
                 if (savedLocation) {
@@ -162,14 +160,22 @@
                 return card;
             }
 
-            // --- NEW: Function to handle displaying ranked results ---
             function displayResults(data) {
                 appState.currentRecommendations = data;
                 allRankedRecommendations = data.recommendations || [];
                 currentlyDisplayedCount = 0;
 
                 const wrapper = document.getElementById('cards-wrapper');
-                wrapper.innerHTML = ''; // Clear previous results
+                wrapper.innerHTML = ''; 
+
+                // --- NEW: Set dynamic header ---
+                const displayTitle = document.getElementById('display-title').value;
+                const resultsHeader = document.querySelector('#results-container .results-header');
+                if (displayTitle) {
+                    resultsHeader.textContent = `Voilà! Here's what I found ${displayTitle} 🪄`;
+                } else {
+                    resultsHeader.textContent = `Voilà! Here's what I found 🪄`;
+                }
 
                 const feedbackContainer = document.querySelector('.results-feedback');
                 let showMoreBtn = document.getElementById('show-more-button');
@@ -182,7 +188,7 @@
                 }
 
                 if (allRankedRecommendations.length > 0) {
-                    displayMoreResults(); // Display the initial set
+                    displayMoreResults();
                     showState('results');
                     saveToHistory(data);
                 } else {
@@ -190,7 +196,6 @@
                 }
             }
 
-            // --- NEW: Function to display the next batch of results ---
             function displayMoreResults() {
                 const wrapper = document.getElementById('cards-wrapper');
                 const nextBatch = allRankedRecommendations.slice(currentlyDisplayedCount, currentlyDisplayedCount + displayIncrement);
@@ -223,10 +228,9 @@
 
             function saveToHistory(data) {
                 let history = JSON.parse(localStorage.getItem('searchHistory')) || [];
-                // Only save the top results to history to keep it clean
                 const historyEntry = { ...data, recommendations: data.recommendations.slice(0, 3) };
-                history.unshift(historyEntry); // Add to the beginning
-                if (history.length > 10) history.pop(); // Remove the oldest
+                history.unshift(historyEntry);
+                if (history.length > 10) history.pop();
                 localStorage.setItem('searchHistory', JSON.stringify(history));
             }
             
@@ -252,7 +256,7 @@
             });
             
             document.getElementById('restart-button').addEventListener('click', () => {
-                sessionStorage.removeItem('userLocation'); // Clear location on restart
+                sessionStorage.removeItem('userLocation');
                 window.location.href = '/';
             });
 
