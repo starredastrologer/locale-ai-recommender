@@ -1,4 +1,3 @@
-
 import os
 import json
 import requests
@@ -70,10 +69,14 @@ def get_nearby_places(location, keyword, radius):
 
 def get_place_details_and_photos(place_id):
     """
-    Gets detailed information for a single place, including its rating, reviews, and photos.
+    Gets detailed information for a single place, including rating, reviews, photos,
+    and other critical metadata for AI ranking.
     """
     details_url = "https://maps.googleapis.com/maps/api/place/details/json"
-    params = {'place_id': place_id, 'fields': 'name,rating,reviews,photos,place_id,user_ratings_total', 'key': GOOGLE_MAPS_API_KEY}
+    # --- UPDATED FIELDS ---
+    fields_to_request = 'name,place_id,rating,reviews,photos,user_ratings_total,price_level,types,editorial_summary,wheelchair_accessible_entrance'
+    params = {'place_id': place_id, 'fields': fields_to_request, 'key': GOOGLE_MAPS_API_KEY}
+    
     try:
         response = requests.get(details_url, params=params); response.raise_for_status()
         details = response.json().get('result', {})
@@ -99,31 +102,114 @@ def get_travel_times(origin, place_ids):
 
 def get_final_recommendation(conversation_history, places_data, origin):
     """
-    After finding a list of potential places, this function uses an AI to analyze
-    their reviews and select the top two that best match the user's original request.
+    Uses a powerful AI to analyze, score, and rank a list of places based on
+    user's conversation, place details, and travel time.
     """
-    lean_data_for_llm = [{'place_id': p.get('place_id'), 'name': p.get('name'), 'rating': p.get('rating'), 'reviews': [r.get('text', '') for r in p.get('reviews', [])[:3]]} for p in places_data]
-    full_data_map = {p.get('place_id'): p for p in places_data}
-    if not lean_data_for_llm: return None
+    if not places_data: return None
+
+    # Get all the place IDs from the detailed data we've fetched.
+    place_ids_to_rank = [p['place_id'] for p in places_data if 'place_id' in p]
+    if not place_ids_to_rank: return None
     
-    prompt = f"""From the list of places, analyze reviews to select the top two that best match: "{conversation_history}". Your response MUST be a JSON object with a key "recommended_ids" which is a list of the string place_ids for your two choices. Data: {json.dumps(lean_data_for_llm, indent=2)}"""
+    # Call the Distance Matrix API for all candidates *before* calling the LLM.
+    travel_times_map = get_travel_times(origin, place_ids_to_rank)
+
+    # Include all rich data in the payload for the LLM
+    lean_data_for_llm = []
+    for p in places_data:
+        place_id = p.get('place_id')
+        if place_id:
+            lean_data_for_llm.append({
+                'place_id': place_id,
+                'name': p.get('name'),
+                'types': p.get('types', []),
+                'rating': p.get('rating'),
+                'review_count': p.get('user_ratings_total'),
+                'price_level': p.get('price_level'),
+                'travel_time': travel_times_map.get(place_id, 'N/A'),
+                'wheelchair_accessible': p.get('wheelchair_accessible_entrance'),
+                'summary': p.get('editorial_summary', {}).get('overview', 'No summary available.'),
+                'reviews': [r.get('text', '') for r in p.get('reviews', [])[:5]] # Increased to 5 reviews
+            })
+
+    # --- NEW, ADVANCED SYSTEM PROMPT ---
+    system_prompt = """
+    You are an expert local guide and recommendation concierge. Your goal is to analyze a list of potential places and rank them according to a user's specific request. You must provide a structured, reasoned analysis for your rankings.
+
+    **TASK:**
+    1.  Analyze the user's conversation history to deeply understand their needs (e.g., ambiance, price, occasion, specific features).
+    2.  For each place in the provided JSON data, evaluate it based on the user's request.
+    3.  You will score each place on FOUR criteria, from 1 (poor match) to 10 (perfect match):
+        - **Relevance Score**: How well do the place's `types`, `summary`, and `reviews` match the user's explicit request (e.g., "cozy cafe", "romantic italian restaurant")?
+        - **Quality Score**: A combination of the `rating` and `review_count`. A high rating with many reviews is a 10. A low rating or very few reviews is a 1.
+        - **Vibe Score**: Based on the language in the `reviews`, does the atmosphere (e.g., "lively", "quiet", "trendy", "family-friendly") match the implicit mood of the user's request?
+        - **Convenience Score**: Based on the `travel_time`. A shorter travel time gets a higher score (e.g., <10 mins is a 10, >45 mins is a 1).
+    4.  Provide a `final_score` which is a weighted average of the four scores.
+    5.  Write a concise `justification` (20-30 words) for your ranking, explaining why this place is a good match, considering all factors including travel time.
+    6.  Return a single JSON object containing a key "ranked_recommendations". The value should be a list of all analyzed places, sorted from highest `final_score` to lowest.
+
+    **OUTPUT FORMAT (Strict):**
+    {
+      "ranked_recommendations": [
+        {
+          "place_id": "string",
+          "name": "string",
+          "relevance_score": integer,
+          "quality_score": integer,
+          "vibe_score": integer,
+          "convenience_score": integer,
+          "final_score": float,
+          "justification": "string"
+        },
+        ...
+      ]
+    }
+    """
+    
+    user_prompt = f"""
+    User's conversation history:
+    ---
+    {conversation_history}
+    ---
+    
+    Data for the places to rank:
+    ---
+    {json.dumps(lean_data_for_llm, indent=2)}
+    ---
+    
+    Please provide your ranked analysis in the specified JSON format.
+    """
+
     try:
-        response = openai.chat.completions.create(model="gpt-3.5-turbo", response_format={"type": "json_object"}, messages=[{"role": "system", "content": "You are a recommender. Always respond in the requested JSON format."}, {"role": "user", "content": prompt}])
+        response = openai.chat.completions.create(
+            model="gpt-4o-mini",
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ]
+        )
         llm_output = json.loads(response.choices[0].message.content)
         
-        recommended_ids = llm_output.get("recommended_ids", [])
-        travel_times = get_travel_times(origin, recommended_ids)
+        ranked_recs_from_llm = llm_output.get("ranked_recommendations", [])
+        if not ranked_recs_from_llm: return None
+
+        full_data_map = {p.get('place_id'): p for p in places_data}
         
         final_recs = []
-        for pid in recommended_ids:
-            if pid in full_data_map:
+        for llm_item in ranked_recs_from_llm:
+            pid = llm_item.get('place_id')
+            if pid and pid in full_data_map:
                 place_data = full_data_map[pid]
-                # Using Google Maps search URL with location name and place_id for better compatibility
                 place_name = urllib.parse.quote_plus(place_data.get('name', ''))
                 place_data['link'] = f"https://www.google.com/maps/search/?api=1&query={place_name}&query_place_id={pid}"
-                place_data['travel_time'] = travel_times.get(pid, 'N/A')
+                place_data['travel_time'] = travel_times_map.get(pid, 'N/A')
+                # We DO NOT add the justification or scores to the final output.
+                # The final object remains clean for the user.
                 final_recs.append(place_data)
+        
         return {"recommendations": final_recs}
+        
     except Exception as e:
         print(f"Error in get_final_recommendation: {e}"); return None
 
@@ -176,13 +262,15 @@ def get_recommendation_route():
     if not unseen_places:
         return jsonify({"type": "error", "content": "I couldn't find any new places matching your refined search. Try broadening your criteria or starting a new search."})
     
-    detailed_places = [get_place_details_and_photos(p.get('place_id')) for p in unseen_places[:7] if p.get('place_id')]
+    # Increase the number of places we analyze from 7 to 15
+    detailed_places = [get_place_details_and_photos(p.get('place_id')) for p in unseen_places[:15] if p.get('place_id')]
     final_recs_data = get_final_recommendation(session['conversation'], [d for d in detailed_places if d], location)
 
     if not final_recs_data or not final_recs_data.get("recommendations"):
         return jsonify({"type": "error", "content": "The AI had trouble picking final recommendations. Please try again."})
 
-    session['excluded_ids'].extend([p.get('place_id') for p in final_recs_data["recommendations"]])
+    # Exclude all places that were considered in this round from future rounds
+    session['excluded_ids'].extend([p.get('place_id') for p in detailed_places])
     final_recs_data['last_keyword'] = final_keyword
     
     session.modified = True
