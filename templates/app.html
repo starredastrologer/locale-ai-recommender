@@ -73,6 +73,11 @@
         document.addEventListener('DOMContentLoaded', () => {
             const states = ['location', 'distance', 'loading', 'results', 'feedback', 'error'];
             const appState = { location: null, currentRecommendations: null };
+            
+            // --- NEW: State for ranked results and "Show More" functionality ---
+            let allRankedRecommendations = [];
+            let currentlyDisplayedCount = 0;
+            const displayIncrement = 3; // Show 3 new results at a time
 
             function showState(stateName, data = {}) {
                 states.forEach(s => document.getElementById(`${s}-container`).classList.remove('active'));
@@ -87,20 +92,16 @@
 
             // --- FIX #3: LOCATION PERMISSION LOGIC ---
             function initializeLocation() {
-                // Check sessionStorage for an existing location
                 const savedLocation = sessionStorage.getItem('userLocation');
                 if (savedLocation) {
                     try {
                         appState.location = JSON.parse(savedLocation);
-                        // If location is found, skip the permission screen
                         showState('distance'); 
                     } catch (e) {
-                        // If stored data is corrupt, clear it and show the permission screen
                         sessionStorage.removeItem('userLocation');
                         showState('location');
                     }
                 } else {
-                    // If no location is saved, show the permission screen
                     showState('location');
                 }
             }
@@ -116,7 +117,6 @@
                             lat: position.coords.latitude,
                             lng: position.coords.longitude,
                         };
-                        // Save the newly acquired location to sessionStorage
                         sessionStorage.setItem('userLocation', JSON.stringify(appState.location));
                         showState('distance');
                     },
@@ -162,16 +162,47 @@
                 return card;
             }
 
+            // --- NEW: Function to handle displaying ranked results ---
             function displayResults(data) {
                 appState.currentRecommendations = data;
+                allRankedRecommendations = data.recommendations || [];
+                currentlyDisplayedCount = 0;
+
                 const wrapper = document.getElementById('cards-wrapper');
-                wrapper.innerHTML = '';
-                if (data && data.recommendations && data.recommendations.length > 0) {
-                    data.recommendations.forEach(place => wrapper.appendChild(createRecommendationCard(place)));
+                wrapper.innerHTML = ''; // Clear previous results
+
+                const feedbackContainer = document.querySelector('.results-feedback');
+                let showMoreBtn = document.getElementById('show-more-button');
+                if (!showMoreBtn) {
+                    showMoreBtn = document.createElement('button');
+                    showMoreBtn.id = 'show-more-button';
+                    showMoreBtn.textContent = '👇 Show More';
+                    feedbackContainer.insertBefore(showMoreBtn, document.getElementById('refine-button'));
+                    showMoreBtn.addEventListener('click', displayMoreResults);
+                }
+
+                if (allRankedRecommendations.length > 0) {
+                    displayMoreResults(); // Display the initial set
                     showState('results');
                     saveToHistory(data);
                 } else {
                     showState('error', { message: "Couldn't find any recommendations matching your criteria." });
+                }
+            }
+
+            // --- NEW: Function to display the next batch of results ---
+            function displayMoreResults() {
+                const wrapper = document.getElementById('cards-wrapper');
+                const nextBatch = allRankedRecommendations.slice(currentlyDisplayedCount, currentlyDisplayedCount + displayIncrement);
+                
+                nextBatch.forEach(place => wrapper.appendChild(createRecommendationCard(place)));
+                currentlyDisplayedCount += nextBatch.length;
+
+                const showMoreBtn = document.getElementById('show-more-button');
+                if (currentlyDisplayedCount >= allRankedRecommendations.length) {
+                    showMoreBtn.style.display = 'none';
+                } else {
+                    showMoreBtn.style.display = 'inline-block';
                 }
             }
 
@@ -192,8 +223,10 @@
 
             function saveToHistory(data) {
                 let history = JSON.parse(localStorage.getItem('searchHistory')) || [];
-                history.push(data);
-                if (history.length > 10) history.shift();
+                // Only save the top results to history to keep it clean
+                const historyEntry = { ...data, recommendations: data.recommendations.slice(0, 3) };
+                history.unshift(historyEntry); // Add to the beginning
+                if (history.length > 10) history.pop(); // Remove the oldest
                 localStorage.setItem('searchHistory', JSON.stringify(history));
             }
             
@@ -235,7 +268,6 @@
                 }
             }
             
-            // --- This is the new starting point ---
             initializeLocation();
         });
     </script>
