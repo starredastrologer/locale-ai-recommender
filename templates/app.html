@@ -144,8 +144,9 @@
                 const mainPhoto = place.photo_urls && place.photo_urls.length > 0 ? place.photo_urls[0] : 'https://via.placeholder.com/350x200/181818/B3B3B3?text=No+Image+Available';
                 const reviewText = (place.reviews && place.reviews[0] && place.reviews[0].text) ? `"${place.reviews[0].text}"` : 'No top review available.';
                 const reviewHtml = `<div class="card-review"><details><summary>Show top review</summary><p>${reviewText}</p></details></div>`;
-                const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || {};
-                const isBookmarked = bookmarks[place.place_id] ? 'bookmarked' : '';
+                
+                const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
+                const isBookmarked = bookmarks.some(b => b.place_id === place.place_id) ? 'bookmarked' : '';
 
                 card.innerHTML = `
                     <button class="bookmark-btn ${isBookmarked}" data-place-id="${place.place_id}">♡</button>
@@ -169,7 +170,6 @@
                 const wrapper = document.getElementById('cards-wrapper');
                 wrapper.innerHTML = ''; 
 
-                // --- NEW: Set dynamic header ---
                 const displayTitle = document.getElementById('display-title').value;
                 const resultsHeader = document.querySelector('#results-container .results-header');
                 if (displayTitle) {
@@ -216,12 +216,17 @@
                 event.stopPropagation();
                 const btn = event.currentTarget;
                 const placeId = btn.dataset.placeId;
-                let bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || {};
-                if (bookmarks[placeId]) {
-                    delete bookmarks[placeId];
+                let bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
+                
+                const existingIndex = bookmarks.findIndex(b => b.place_id === placeId);
+
+                if (existingIndex > -1) {
+                    // Item exists, so unbookmark it
+                    bookmarks.splice(existingIndex, 1);
                     btn.classList.remove('bookmarked');
                 } else {
-                    bookmarks[placeId] = placeData;
+                    // Item doesn't exist, so bookmark it by adding to the start of the array
+                    bookmarks.unshift(placeData);
                     btn.classList.add('bookmarked');
                 }
                 localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
