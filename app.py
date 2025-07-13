@@ -266,49 +266,57 @@ def get_final_recommendation(conversation_history, places_data, origin):
 # --- Flask Routes ---
 @app.route("/")
 def home():
+    print("--- [ROUTE] /: Home page requested. Clearing session. ---", flush=True)
     session.clear()
     return render_template("index.html")
 
 @app.route("/refine", methods=["POST"])
 def refine_page():
-    session.clear()
     plan_id = request.form.get("plan_id")
+    print(f"--- [ROUTE] /refine: Refine page requested for plan_id='{plan_id}'. Clearing session. ---", flush=True)
+    session.clear()
     if plan_id and plan_id in plan_book:
         return render_template("refine.html", plan_id=plan_id, plan=plan_book[plan_id])
     return redirect(url_for('home'))
 
 @app.route("/app", methods=["POST"])
 def app_page():
+    print("--- [ROUTE] /app: App page requested. ---", flush=True)
     session.clear()
     form_data = request.form
     if 'query' in form_data and form_data.get('query'):
-        session['initial_query'] = form_data.get('query')
+        query = form_data.get('query')
+        print(f"--- [ROUTE] /app: Path is 'Direct Search'. Query: '{query}' ---", flush=True)
+        session['initial_query'] = query
         session['display_title'] = "for your search"
         return render_template("app.html")
     elif 'plan_id' in form_data:
         plan_id = form_data.get('plan_id')
+        action = form_data.get('action')
+        print(f"--- [ROUTE] /app: Path is 'Plan'. Plan ID: '{plan_id}', Action: '{action}' ---", flush=True)
         plan = plan_book.get(plan_id)
         if not plan: return redirect(url_for('home'))
         initial_prompt = [plan['base_prompt']]
         session['display_title'] = plan['display_title']
-        if form_data.get('action') == 'get_recommendations':
+        if action == 'get_recommendations':
             for question in plan['questions']:
                 q_id = question['id']
                 if q_id in form_data and form_data[q_id]:
                     initial_prompt.append(f"For '{question['text']}', the user specified '{form_data[q_id]}'.")
         session['initial_query'] = " ".join(initial_prompt)
+        print(f"--- [ROUTE] /app: Constructed initial query: \"{session['initial_query']}\" ---", flush=True)
         return render_template("app.html")
     return redirect(url_for('home'))
 
 @app.route("/get_recommendation", methods=["POST"])
 def get_recommendation_route():
-    print("\n\n--- [STEP 1] Received new recommendation request. ---", flush=True)
+    print("\n\n--- [API_CALL] /get_recommendation: Received new recommendation request. ---", flush=True)
     data = request.json
     location = data.get("location")
     user_input = data.get("query")
     is_feedback = data.get("is_feedback", False)
     
-    print(f"--- [STEP 2] Building conversation. Initial query: '{user_input}', Is feedback: {is_feedback}", flush=True)
+    print(f"--- [API_CALL] Building conversation. Initial query: '{user_input}', Is feedback: {is_feedback}", flush=True)
     if 'conversation' not in session:
         if not moderate_query(user_input): 
             return jsonify({"type": "error", "content": "This search is not permitted."})
@@ -324,59 +332,60 @@ def get_recommendation_route():
         else:
              session['conversation'] += f"\nMy Answer: {user_input}"
     
-    print("--- [STEP 3] Updating travel distance.", flush=True)
+    print("--- [API_CALL] Updating travel distance.", flush=True)
     if data.get("distance"): session['travel_distance'] = int(data.get("distance"))
     if data.get('expand_search'): session['travel_distance'] = 20000
 
-    print("--- [STEP 4] Refining query with LLM.", flush=True)
+    print("--- [API_CALL] Refining query with LLM.", flush=True)
     llm_response = refine_query_with_llm(session['conversation'])
     if llm_response.get("type") != "keyword":
-        print("--- [INFO] LLM asked a clarifying question. Responding to user.", flush=True)
+        print("--- [API_CALL] LLM asked a clarifying question. Responding to user.", flush=True)
         return jsonify(llm_response)
 
     final_keyword = llm_response.get("content")
     session['last_keyword'] = final_keyword
-    print(f"--- [STEP 5] Refined keyword is: '{final_keyword}'", flush=True)
+    print(f"--- [API_CALL] Refined keyword is: '{final_keyword}'", flush=True)
     
     current_distance = session.get('travel_distance', 3000)
-    print(f"--- [STEP 6] Searching Google Places with radius: {current_distance}", flush=True)
+    print(f"--- [API_CALL] Searching Google Places with radius: {current_distance}", flush=True)
     nearby_places = get_nearby_places(location, final_keyword, current_distance)
 
     if not nearby_places or not nearby_places.get('results'):
-        print("--- [INFO] No places found in initial search.", flush=True)
+        print("--- [API_CALL] No places found in initial search.", flush=True)
         if current_distance < 20000:
             return jsonify({"type": "expand_search", "message": "I couldn't find anything in that range. Would you like to expand the search area?"})
         else:
             return jsonify({"type": "error", "content": "I couldn't find any places, even in a wider area."})
 
-    print(f"--- [STEP 7] Found {len(nearby_places.get('results', []))} total places. Filtering out previously seen places.", flush=True)
+    print(f"--- [API_CALL] Found {len(nearby_places.get('results', []))} total places. Filtering out previously seen places.", flush=True)
     unseen_places = [p for p in nearby_places['results'] if p.get('place_id') not in session.get('excluded_ids', [])]
     
     if not unseen_places:
-        print("--- [INFO] No *new* places found after filtering.", flush=True)
+        print("--- [API_CALL] No *new* places found after filtering.", flush=True)
         return jsonify({"type": "error", "content": "I couldn't find any new places matching your refined search. Try broadening your criteria or starting a new search."})
     
-    print(f"--- [STEP 8] Fetching details for up to 15 unseen places.", flush=True)
+    print(f"--- [API_CALL] Fetching details for up to 15 unseen places.", flush=True)
     detailed_places_list = [get_place_details_and_photos(p.get('place_id')) for p in unseen_places[:15] if p.get('place_id')]
     detailed_places = [d for d in detailed_places_list if d]
-    print(f"--- [STEP 9] Successfully fetched details for {len(detailed_places)} places.", flush=True)
+    print(f"--- [API_CALL] Successfully fetched details for {len(detailed_places)} places.", flush=True)
 
-    print("--- [STEP 10] Sending place data to LLM for final ranking.", flush=True)
+    print("--- [API_CALL] Sending place data to LLM for final ranking.", flush=True)
     final_recs_data = get_final_recommendation(session['conversation'], detailed_places, location)
 
     if not final_recs_data or not final_recs_data.get("recommendations"):
-        print("--- [ERROR] Final recommendation ranking from LLM failed or returned empty.", flush=True)
+        print("--- [API_CALL] Final recommendation ranking from LLM failed or returned empty.", flush=True)
         return jsonify({"type": "error", "content": "The AI had trouble picking final recommendations. Please try again."})
 
     session['excluded_ids'].extend([p.get('place_id') for p in detailed_places if p])
     final_recs_data['last_keyword'] = final_keyword
     
     session.modified = True
-    print("--- [STEP 11] Successfully generated recommendations. Sending response to user.", flush=True)
+    print("--- [API_CALL] Successfully generated recommendations. Sending response to user.", flush=True)
     return jsonify({"type": "recommendation", "data": final_recs_data})
 
 @app.route("/history")
 def history_page():
+    print("--- [ROUTE] /history: History/Bookmarks page requested. ---", flush=True)
     return render_template("history.html")
 
 if __name__ == "__main__":
