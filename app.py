@@ -140,17 +140,18 @@ def moderate_query(user_input):
 
 def refine_query_with_llm(conversation_history):
     system_prompt = """
-    You are an expert conversational query refiner for the Google Maps Places API. Your primary goal is to combine the user's entire conversation history into a single, optimized 5-6 word keyword phrase for the API.
+    You are an expert conversational query refiner for the Google Maps Places API. Your primary goal is to combine the user's entire conversation history into a single, optimized keyword phrase for the API. This phrase should be a maximum of 9 words.
 
     RULES:
     1.  **Always consider the full conversation history.** Do not treat new input in isolation.
     2.  When a user refines a search (e.g., adding "make it cheaper" or "with wheelchair access"), your job is to **merge their new input with the previous context** to create a new, more specific keyword.
     3.  You should **ONLY ask a clarifying question if the *entire conversation* is still impossibly vague** (e.g., the only input is "food"). If the user has provided enough detail for a search, do not ask for more.
     4.  Your output keyword must never contain comma-separated values.
+    5.  **Crucially, ensure the final keyword phrase is no more than 9 words long.** If necessary, prioritize the most important keywords or use more concise phrasing.
 
     EXAMPLE 1: REFINEMENT
-    - Conversation History: "User's initial request: spanish restaurants\nUser was not satisfied. New request: something romantic with outdoor seating"
-    - Your Output: {"type": "keyword", "content": "romantic Spanish restaurant with outdoor seating"}
+    - Conversation History: "User's initial request: A spot for a date that is relaxed, cozy, and intimate, suitable for conversation. For 'What's the vibe?', the user specified 'cozy_romantic'."
+    - Your Output: {"type": "keyword", "content": "cozy romantic intimate relaxed restaurant"}
 
     EXAMPLE 2: VAGUE INITIAL QUERY
     - Conversation History: "User's initial request: I want lunch"
