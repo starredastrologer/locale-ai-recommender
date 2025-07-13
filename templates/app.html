@@ -162,7 +162,6 @@
                 return card;
             }
 
-            // ** THIS IS THE FIXED FUNCTION **
             function displayResults(data) {
                 appState.currentRecommendations = data;
                 allRankedRecommendations = data.recommendations || [];
@@ -178,8 +177,7 @@
                 } else {
                     resultsHeader.textContent = `Voilà! Here's what I found 🪄`;
                 }
-                
-                // Add "Show More" button if it doesn't exist
+
                 const feedbackContainer = document.querySelector('.results-feedback');
                 let showMoreBtn = document.getElementById('show-more-button');
                 if (!showMoreBtn) {
@@ -191,8 +189,7 @@
                 }
 
                 if (allRankedRecommendations.length > 0) {
-                    // This was the missing part: The initial call to draw the cards.
-                    displayMoreResults(); 
+                    displayMoreResults();
                     showState('results');
                     saveToHistory(data);
                 } else {
@@ -200,7 +197,6 @@
                 }
             }
 
-            // ** THIS IS THE RESTORED FUNCTION **
             function displayMoreResults() {
                 const wrapper = document.getElementById('cards-wrapper');
                 const nextBatch = allRankedRecommendations.slice(currentlyDisplayedCount, currentlyDisplayedCount + displayIncrement);
