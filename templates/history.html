@@ -11,58 +11,118 @@
     <div class="history-container">
         <header class="history-header">
             <a href="/" class="back-link">←</a>
-            <h2>My Bookmarks & History</h2>
+            <h2>My Activity</h2>
         </header>
 
-        <section class="history-section">
-            <h3>⭐ Bookmarked Places</h3>
-            <div id="bookmark-cards-wrapper" class="cards-wrapper-history">
+        <!-- Tab Buttons -->
+        <div class="tab-buttons">
+            <button class="tab-button active" data-tab="bookmarks">⭐ Bookmarks</button>
+            <button class="tab-button" data-tab="history">📜 Recent Searches</button>
+        </div>
+
+        <!-- Tab Content -->
+        <div id="bookmarks-content" class="tab-content active">
+            <div id="bookmark-list" class="bookmark-list">
                 <!-- Bookmarks will be injected here by JavaScript -->
             </div>
             <p id="no-bookmarks-text" class="empty-state-text" style="display: none;">You haven't bookmarked any places yet. Click the ♡ icon on a result to save it here!</p>
-        </section>
+        </div>
 
-        <section class="history-section">
-            <h3>📜 Recent Searches</h3>
+        <div id="history-content" class="tab-content">
             <div id="search-history-list" class="search-history-list">
                  <!-- Search History will be injected here by JavaScript -->
             </div>
             <p id="no-history-text" class="empty-state-text" style="display: none;">Your recent successful searches will appear here.</p>
-        </section>
+        </div>
+
     </div>
     
-    <!-- A separate script for the history page -->
     <script>
         document.addEventListener("DOMContentLoaded", () => {
-            const bookmarkWrapper = document.getElementById("bookmark-cards-wrapper");
+            const bookmarkList = document.getElementById("bookmark-list");
             const noBookmarksText = document.getElementById("no-bookmarks-text");
             const historyWrapper = document.getElementById("search-history-list");
             const noHistoryText = document.getElementById("no-history-text");
 
-            // --- Load Bookmarks ---
-            const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || {};
-            if (Object.keys(bookmarks).length > 0) {
-                // Bookmarks are an object, so their order isn't guaranteed chronologically.
-                // Displaying them as they are stored.
-                Object.values(bookmarks).forEach(place => {
-                    const card = createHistoryCard(place);
-                    bookmarkWrapper.appendChild(card);
+            const tabButtons = document.querySelectorAll(".tab-button");
+            const tabContents = document.querySelectorAll(".tab-content");
+
+            // --- Tab Switching Logic ---
+            tabButtons.forEach(button => {
+                button.addEventListener("click", () => {
+                    tabButtons.forEach(btn => btn.classList.remove("active"));
+                    button.classList.add("active");
+
+                    const targetTab = button.dataset.tab;
+                    tabContents.forEach(content => {
+                        if (content.id === `${targetTab}-content`) {
+                            content.classList.add("active");
+                        } else {
+                            content.classList.remove("active");
+                        }
+                    });
                 });
-            } else {
-                noBookmarksText.style.display = 'block';
+            });
+
+            // --- Load Bookmarks ---
+            function loadBookmarks() {
+                const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
+                bookmarkList.innerHTML = ''; // Clear existing list
+
+                if (bookmarks.length > 0) {
+                    bookmarks.forEach((place, index) => {
+                        const item = createBookmarkItem(place, index);
+                        bookmarkList.appendChild(item);
+                    });
+                    noBookmarksText.style.display = 'none';
+                } else {
+                    noBookmarksText.style.display = 'block';
+                }
             }
+            
+            function createBookmarkItem(place, index) {
+                const item = document.createElement("div");
+                item.className = "bookmark-item";
+                item.dataset.index = index; // Store index for removal
+                
+                const mainPhoto = place.photo_urls && place.photo_urls.length > 0 ? place.photo_urls[0] : 'https://via.placeholder.com/100x100/181818/B3B3B3?text=No+Img';
+
+                item.innerHTML = `
+                    <img src="${mainPhoto}" alt="${place.name}" class="bookmark-item-photo">
+                    <div class="bookmark-item-details">
+                        <h4 class="bookmark-item-title">${place.name}</h4>
+                        <p class="bookmark-item-rating">⭐ ${place.rating || 'N/A'} (${place.user_ratings_total || 0})</p>
+                    </div>
+                    <div class="bookmark-item-actions">
+                         <a href="${place.link}" target="_blank" rel="noopener noreferrer" class="view-map-btn">View Map</a>
+                         <button class="remove-bookmark-btn">Remove</button>
+                    </div>
+                `;
+
+                item.querySelector('.remove-bookmark-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    removeBookmark(place.place_id);
+                });
+
+                return item;
+            }
+
+            function removeBookmark(placeId) {
+                let bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
+                const updatedBookmarks = bookmarks.filter(b => b.place_id !== placeId);
+                localStorage.setItem('bookmarks', JSON.stringify(updatedBookmarks));
+                loadBookmarks(); // Reload the list to reflect the change
+            }
+
 
             // --- Load History ---
             const history = JSON.parse(localStorage.getItem('searchHistory')) || [];
             if (history.length > 0) {
-                 // The 'saveToHistory' function already saves the newest item at the start of the array.
-                 // We just need to loop through it directly without reversing.
-                 history.forEach(item => { // CORRECTED: Removed .reverse() to show most recent first
+                 history.forEach(item => {
                     const historyItem = document.createElement('div');
                     historyItem.className = 'history-item';
                     
                     let placesList = '<ul>';
-                    // The recommendations array within the history item is already sorted by relevance
                     item.recommendations.forEach(place => {
                         placesList += `<li><a href="${place.link}" target="_blank">${place.name}</a></li>`;
                     });
@@ -74,19 +134,9 @@
             } else {
                 noHistoryText.style.display = 'block';
             }
-
-            function createHistoryCard(place) {
-                const card = document.createElement("div");
-                card.className = "recommendation-card history-card";
-                const mainPhoto = place.photo_urls && place.photo_urls.length > 0 ? place.photo_urls[0] : 'https://via.placeholder.com/350x200/181818/B3B3B3?text=No+Image';
-                card.innerHTML = `
-                    <img src="${mainPhoto}" alt="${place.name}" class="card-photo">
-                    <h3 class="card-title">${place.name}</h3>
-                    <p class="card-rating">⭐ ${place.rating || 'N/A'} (${place.user_ratings_total || 0} ratings)</p>
-                    <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}&query_place_id=${place.place_id}" target="_blank" rel="noopener noreferrer" class="card-link">View on Google Maps</a>
-                `;
-                return card;
-            }
+            
+            // Initial load
+            loadBookmarks();
         });
     </script>
 </body>
