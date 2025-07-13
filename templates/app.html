@@ -239,7 +239,7 @@
 
             document.querySelectorAll('.distance-button').forEach(button => {
                 button.addEventListener('click', () => {
-                    fetchRecommendations({ query: document.getElementById('initial-query')..value, location: appState.location, distance: button.dataset.distance, is_feedback: false });
+                    fetchRecommendations({ query: document.getElementById('initial-query').value, location: appState.location, distance: button.dataset.distance, is_feedback: false });
                 });
             });
             
