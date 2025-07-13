@@ -193,10 +193,12 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    margin-bottom: var(--spacing-xl);
 }
 
 .history-header h2 {
     margin: 0px;
+    font-size: clamp(1.5rem, 4vw, 2rem);
 }
 
 .history-link {
@@ -666,36 +668,142 @@ body {
 
 /* --- History Page Styles --- */
 .history-container {
-    max-width: 1200px;
+    max-width: 800px;
     margin: 0 auto;
     padding: var(--spacing-xl);
     min-height: 100vh;
 }
 
-.history-section {
-    margin-bottom: var(--spacing-2xl);
+/* NEW: Tab Styles */
+.tab-buttons {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-xl);
+    background-color: var(--bg-light);
+    padding: var(--spacing-sm);
+    border-radius: var(--border-radius);
 }
 
-.history-section h3 {
-    font-size: 1.8rem;
-    margin-bottom: var(--spacing-xl);
+.tab-button {
+    flex: 1;
+    padding: var(--spacing-md);
+    background-color: transparent;
+    border: none;
+    color: var(--text-medium);
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: var(--border-radius-small);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.tab-button.active {
+    background-color: var(--primary-accent);
+    color: white;
+    box-shadow: 0 4px 15px rgba(30, 215, 96, 0.2);
+}
+
+.tab-button:not(.active):hover {
+    background-color: var(--bg-card);
     color: var(--text-light);
-    font-weight: 700;
-    text-align: center;
 }
 
-.cards-wrapper-history {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: var(--spacing-xl);
-    margin-bottom: var(--spacing-xl);
+.tab-content {
+    display: none;
+    animation: fadeIn 0.5s ease;
 }
 
-.history-card {
-    height: auto;
-    min-height: 400px;
+.tab-content.active {
+    display: block;
 }
 
+/* NEW: Compact Bookmark List Styles */
+.bookmark-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.bookmark-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background-color: var(--bg-card);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.bookmark-item:hover {
+    border-color: var(--primary-accent);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px var(--shadow-medium);
+}
+
+.bookmark-item-photo {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: var(--border-radius-small);
+    flex-shrink: 0;
+}
+
+.bookmark-item-details {
+    flex-grow: 1;
+}
+
+.bookmark-item-title {
+    margin: 0 0 var(--spacing-xs) 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-light);
+}
+
+.bookmark-item-rating {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+}
+
+.bookmark-item-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-shrink: 0;
+}
+
+.view-map-btn, .remove-bookmark-btn {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--border-radius-small);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid var(--border-light);
+}
+
+.view-map-btn {
+    background-color: var(--bg-light);
+    color: var(--text-light);
+}
+.view-map-btn:hover {
+    background-color: var(--primary-accent);
+    border-color: var(--primary-accent);
+}
+
+.remove-bookmark-btn {
+    background-color: transparent;
+    color: var(--text-medium);
+}
+.remove-bookmark-btn:hover {
+    background-color: #ff3b30;
+    color: white;
+    border-color: #ff3b30;
+}
+
+
+/* OLD: History List Styles (largely unchanged) */
 .search-history-list {
     display: flex;
     flex-direction: column;
@@ -925,10 +1033,25 @@ body {
         font-size: 1.5rem;
         margin-bottom: var(--spacing-lg);
     }
+    
+    .bookmark-item {
+        flex-direction: column;
+        align-items: stretch;
+    }
 
-    .cards-wrapper-history {
-        grid-template-columns: 1fr;
-        gap: var(--spacing-lg);
+    .bookmark-item-photo {
+        width: 100%;
+        height: 120px;
+    }
+
+    .bookmark-item-actions {
+        justify-content: space-between;
+        margin-top: var(--spacing-sm);
+    }
+
+    .view-map-btn, .remove-bookmark-btn {
+        flex: 1;
+        text-align: center;
     }
 
     .search-history-list {
