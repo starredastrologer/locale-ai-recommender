@@ -39,6 +39,7 @@
     
     <script>
         document.addEventListener("DOMContentLoaded", () => {
+            console.log("--- [JS-HISTORY] Page loaded. Starting to load bookmarks and history. ---");
             const bookmarkList = document.getElementById("bookmark-list");
             const noBookmarksText = document.getElementById("no-bookmarks-text");
             const historyWrapper = document.getElementById("search-history-list");
@@ -52,9 +53,9 @@
                 button.addEventListener("click", () => {
                     tabButtons.forEach(btn => btn.classList.remove("active"));
                     button.classList.add("active");
-
                     const targetTab = button.dataset.tab;
                     tabContents.forEach(content => {
+                        content.classList.add("active");
                         if (content.id === `${targetTab}-content`) {
                             content.classList.add("active");
                         } else {
@@ -66,16 +67,32 @@
 
             // --- Load Bookmarks ---
             function loadBookmarks() {
-                const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
+                console.log("--- [JS-BOOKMARKS] Attempting to load bookmarks from localStorage.");
+                const bookmarksRaw = localStorage.getItem('bookmarks');
+                console.log("--- [JS-BOOKMARKS] Raw data from localStorage:", bookmarksRaw);
+                
+                let bookmarks = [];
+                try {
+                    // Check if bookmarksRaw is not null or empty before parsing
+                    if (bookmarksRaw) {
+                        bookmarks = JSON.parse(bookmarksRaw) || [];
+                    }
+                } catch (e) {
+                    console.error("--- [JS-BOOKMARKS-ERROR] Failed to parse bookmarks JSON:", e);
+                    bookmarks = []; // Reset to empty array on error
+                }
+
+                console.log(`--- [JS-BOOKMARKS] Successfully parsed ${bookmarks.length} bookmarks.`);
                 bookmarkList.innerHTML = ''; // Clear existing list
 
                 if (bookmarks.length > 0) {
+                    noBookmarksText.style.display = 'none';
                     bookmarks.forEach((place, index) => {
                         const item = createBookmarkItem(place, index);
                         bookmarkList.appendChild(item);
                     });
-                    noBookmarksText.style.display = 'none';
                 } else {
+                    console.log("--- [JS-BOOKMARKS] No bookmarks found to display.");
                     noBookmarksText.style.display = 'block';
                 }
             }
@@ -83,10 +100,8 @@
             function createBookmarkItem(place, index) {
                 const item = document.createElement("div");
                 item.className = "bookmark-item";
-                item.dataset.index = index; // Store index for removal
-                
+                item.dataset.index = index;
                 const mainPhoto = place.photo_urls && place.photo_urls.length > 0 ? place.photo_urls[0] : 'https://via.placeholder.com/100x100/181818/B3B3B3?text=No+Img';
-
                 item.innerHTML = `
                     <img src="${mainPhoto}" alt="${place.name}" class="bookmark-item-photo">
                     <div class="bookmark-item-details">
@@ -98,22 +113,20 @@
                          <button class="remove-bookmark-btn">Remove</button>
                     </div>
                 `;
-
                 item.querySelector('.remove-bookmark-btn').addEventListener('click', (e) => {
                     e.stopPropagation();
                     removeBookmark(place.place_id);
                 });
-
                 return item;
             }
 
             function removeBookmark(placeId) {
+                console.log(`--- [JS-BOOKMARKS] Removing bookmark with placeId: ${placeId}`);
                 let bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
                 const updatedBookmarks = bookmarks.filter(b => b.place_id !== placeId);
                 localStorage.setItem('bookmarks', JSON.stringify(updatedBookmarks));
                 loadBookmarks(); // Reload the list to reflect the change
             }
-
 
             // --- Load History ---
             const history = JSON.parse(localStorage.getItem('searchHistory')) || [];
@@ -121,13 +134,11 @@
                  history.forEach(item => {
                     const historyItem = document.createElement('div');
                     historyItem.className = 'history-item';
-                    
                     let placesList = '<ul>';
                     item.recommendations.forEach(place => {
                         placesList += `<li><a href="${place.link}" target="_blank">${place.name}</a></li>`;
                     });
                     placesList += '</ul>';
-
                     historyItem.innerHTML = `<p>Your search for <strong>"${item.last_keyword}"</strong> found:</p>${placesList}`;
                     historyWrapper.appendChild(historyItem);
                 });
