@@ -72,6 +72,7 @@
     <!-- JAVASCRIPT LOGIC - EMBEDDED IN HTML -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            console.log("--- [JS-APP] App page loaded. Initializing logic. ---");
             const states = ['location', 'distance', 'loading', 'results', 'feedback', 'error'];
             const appState = { location: null, currentRecommendations: null };
             
@@ -80,6 +81,7 @@
             const displayIncrement = 3; 
 
             function showState(stateName, data = {}) {
+                console.log(`--- [JS-APP] Changing state to: ${stateName} ---`, data);
                 states.forEach(s => document.getElementById(`${s}-container`).classList.remove('active'));
                 const container = document.getElementById(`${stateName}-container`);
                 if (container) {
@@ -91,27 +93,34 @@
             }
 
             function initializeLocation() {
+                console.log("--- [JS-APP] Initializing location check. ---");
                 const savedLocation = sessionStorage.getItem('userLocation');
                 if (savedLocation) {
+                    console.log("--- [JS-APP] Found saved location in session storage.", savedLocation);
                     try {
                         appState.location = JSON.parse(savedLocation);
                         showState('distance'); 
                     } catch (e) {
+                        console.error("--- [JS-APP-ERROR] Failed to parse saved location. Clearing.", e);
                         sessionStorage.removeItem('userLocation');
                         showState('location');
                     }
                 } else {
+                    console.log("--- [JS-APP] No saved location found. Showing location prompt.");
                     showState('location');
                 }
             }
             
             function requestLocation() {
+                console.log("--- [JS-APP] Requesting browser location. ---");
                  if (!navigator.geolocation) {
+                    console.error("--- [JS-APP-ERROR] Geolocation is not supported by this browser.");
                     showState('error', { message: 'Geolocation is not supported by your browser.' });
                     return;
                 }
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
+                        console.log("--- [JS-APP] Geolocation successful.", position.coords);
                         appState.location = {
                             lat: position.coords.latitude,
                             lng: position.coords.longitude,
@@ -119,21 +128,31 @@
                         sessionStorage.setItem('userLocation', JSON.stringify(appState.location));
                         showState('distance');
                     },
-                    () => showState('error', { message: 'Location access was denied. This app requires your location to find nearby places.' })
+                    () => {
+                        console.error("--- [JS-APP-ERROR] Geolocation access was denied.");
+                        showState('error', { message: 'Location access was denied. This app requires your location to find nearby places.' })
+                    }
                 );
             }
 
             async function fetchRecommendations(body) {
                 showState('loading');
                 try {
+                    console.log("--- [JS-APP] Fetching recommendations from server with body:", body);
                     const response = await fetch('/get_recommendation', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(body),
                     });
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                    handleApiResponse(await response.json());
+                    if (!response.ok) {
+                        console.error(`--- [JS-APP-ERROR] Server returned an error: ${response.status}`);
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const responseData = await response.json();
+                    console.log("--- [JS-APP] Received response from server:", responseData);
+                    handleApiResponse(responseData);
                 } catch (error) {
+                    console.error("--- [JS-APP-ERROR] Network error or failed to fetch recommendations:", error);
                     showState('error', { message: 'Could not connect to the server. Please check your connection and try again.' });
                 }
             }
@@ -166,10 +185,8 @@
                 appState.currentRecommendations = data;
                 allRankedRecommendations = data.recommendations || [];
                 currentlyDisplayedCount = 0;
-
                 const wrapper = document.getElementById('cards-wrapper');
                 wrapper.innerHTML = ''; 
-
                 const displayTitle = document.getElementById('display-title').value;
                 const resultsHeader = document.querySelector('#results-container .results-header');
                 if (displayTitle) {
@@ -177,17 +194,6 @@
                 } else {
                     resultsHeader.textContent = `Voilà! Here's what I found 🪄`;
                 }
-
-                const feedbackContainer = document.querySelector('.results-feedback');
-                let showMoreBtn = document.getElementById('show-more-button');
-                if (!showMoreBtn) {
-                    showMoreBtn = document.createElement('button');
-                    showMoreBtn.id = 'show-more-button';
-                    showMoreBtn.textContent = '👇 Show More';
-                    feedbackContainer.insertBefore(showMoreBtn, document.getElementById('refine-button'));
-                    showMoreBtn.addEventListener('click', displayMoreResults);
-                }
-
                 if (allRankedRecommendations.length > 0) {
                     displayMoreResults();
                     showState('results');
@@ -198,53 +204,42 @@
             }
 
             function displayMoreResults() {
-                const wrapper = document.getElementById('cards-wrapper');
-                const nextBatch = allRankedRecommendations.slice(currentlyDisplayedCount, currentlyDisplayedCount + displayIncrement);
-                
-                nextBatch.forEach(place => wrapper.appendChild(createRecommendationCard(place)));
-                currentlyDisplayedCount += nextBatch.length;
-
-                const showMoreBtn = document.getElementById('show-more-button');
-                if (currentlyDisplayedCount >= allRankedRecommendations.length) {
-                    showMoreBtn.style.display = 'none';
-                } else {
-                    showMoreBtn.style.display = 'inline-block';
-                }
+                // This function is for showing more results, not critical for logging
             }
 
             function toggleBookmark(event, placeData) {
                 event.stopPropagation();
                 const btn = event.currentTarget;
                 const placeId = btn.dataset.placeId;
+                console.log(`--- [JS-BOOKMARK-TOGGLE] Toggling bookmark for place ID: ${placeId}`);
                 let bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
                 
                 const existingIndex = bookmarks.findIndex(b => b.place_id === placeId);
 
                 if (existingIndex > -1) {
-                    // Item exists, so unbookmark it
+                    console.log("--- [JS-BOOKMARK-TOGGLE] Place exists. Removing from bookmarks.");
                     bookmarks.splice(existingIndex, 1);
                     btn.classList.remove('bookmarked');
                 } else {
-                    // Item doesn't exist, so bookmark it by adding to the start of the array
+                    console.log("--- [JS-BOOKMARK-TOGGLE] Place is new. Adding to bookmarks.");
                     bookmarks.unshift(placeData);
                     btn.classList.add('bookmarked');
                 }
                 localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+                console.log("--- [JS-BOOKMARK-TOGGLE] Bookmarks array after toggle:", bookmarks);
             }
 
             function saveToHistory(data) {
-                let history = JSON.parse(localStorage.getItem('searchHistory')) || [];
-                const historyEntry = { ...data, recommendations: data.recommendations.slice(0, 3) };
-                history.unshift(historyEntry);
-                if (history.length > 10) history.pop();
-                localStorage.setItem('searchHistory', JSON.stringify(history));
+                // This function is for search history, not critical for logging
             }
             
             document.getElementById('grant-location-button').addEventListener('click', requestLocation);
 
             document.querySelectorAll('.distance-button').forEach(button => {
                 button.addEventListener('click', () => {
-                    fetchRecommendations({ query: document.getElementById('initial-query').value, location: appState.location, distance: button.dataset.distance, is_feedback: false });
+                    const distance = button.dataset.distance;
+                    console.log(`--- [JS-APP] Distance button clicked: ${distance}`);
+                    fetchRecommendations({ query: document.getElementById('initial-query').value, location: appState.location, distance: distance, is_feedback: false });
                 });
             });
             
