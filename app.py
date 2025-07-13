@@ -133,6 +133,7 @@ def moderate_query(user_input):
     """
     try:
         response = openai.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "system", "content": "You are a content safety moderator."}, {"role": "user", "content": moderation_prompt}], temperature=0, max_tokens=5)
+        # BUG FIX: Changed response.choices() to response.choices
         decision = response.choices[0].message.content.strip().lower().replace('"', '').replace('.', '')
         return decision == "safe"
     except Exception as e:
