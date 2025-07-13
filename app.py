@@ -14,8 +14,7 @@ GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 openai.api_key = OPENAI_API_KEY
 
-# --- NEW: The Plan Book ---
-# This dictionary holds the logic for our guided "Plans"
+# --- The Plan Book ---
 plan_book = {
     "date_night": {
         "display_title": "for a Casual Date Night",
@@ -113,7 +112,7 @@ plan_book = {
 }
 
 
-# --- Helper Functions (No changes to the functions below, only the routes) ---
+# --- Helper Functions ---
 
 def moderate_query(user_input):
     """Uses an LLM to check if a query violates safety policies."""
@@ -133,7 +132,6 @@ def moderate_query(user_input):
     """
     try:
         response = openai.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "system", "content": "You are a content safety moderator."}, {"role": "user", "content": moderation_prompt}], temperature=0, max_tokens=5)
-        # BUG FIX: Changed response.choices() to response.choices
         decision = response.choices[0].message.content.strip().lower().replace('"', '').replace('.', '')
         return decision == "safe"
     except Exception as e:
@@ -259,7 +257,6 @@ def get_final_recommendation(conversation_history, places_data, origin):
 def home():
     session.clear(); return render_template("index.html")
 
-# --- NEW ROUTE: To show the refinement screen ---
 @app.route("/refine", methods=["POST"])
 def refine_page():
     session.clear()
@@ -273,62 +270,64 @@ def app_page():
     session.clear()
     form_data = request.form
 
-    # Case 1: User used the standard search bar
     if 'query' in form_data and form_data.get('query'):
         session['initial_query'] = form_data.get('query')
         session['display_title'] = "for your search"
         return render_template("app.html")
 
-    # Case 2: User used the "Plans" feature
     elif 'plan_id' in form_data:
         plan_id = form_data.get('plan_id')
         plan = plan_book.get(plan_id)
         if not plan:
             return redirect(url_for('home'))
 
-        # Start with the base prompt for the plan
         initial_prompt = [plan['base_prompt']]
         session['display_title'] = plan['display_title']
         
-        # If the user submitted refinements (and didn't click "Surprise Me")
         if form_data.get('action') == 'get_recommendations':
             for question in plan['questions']:
                 q_id = question['id']
                 if q_id in form_data and form_data[q_id]:
-                    # This is a simplistic way to add refinement text.
-                    # A more advanced version could have specific text per option.
                     initial_prompt.append(f"For '{question['text']}', the user specified '{form_data[q_id]}'.")
         
-        # Join all parts into a single, rich initial query
         session['initial_query'] = " ".join(initial_prompt)
         return render_template("app.html")
     
-    # Fallback if the form is invalid
     return redirect(url_for('home'))
 
 
 @app.route("/get_recommendation", methods=["POST"])
 def get_recommendation_route():
-    data = request.json; location = data.get("location"); user_input = data.get("query"); is_feedback = data.get("is_feedback", False)
+    data = request.json
+    location = data.get("location")
+    user_input = data.get("query")
+    is_feedback = data.get("is_feedback", False)
     
     if 'conversation' not in session:
-        if not moderate_query(user_input): return jsonify({"type": "error", "content": "This search is not permitted."})
+        if not moderate_query(user_input): 
+            return jsonify({"type": "error", "content": "This search is not permitted."})
         session['conversation'] = f"User's initial request: {user_input}"
-        session['excluded_ids'], session['retries'] = [], 0
+        session['excluded_ids'] = []
+        session['retries'] = 0
     else:
         if is_feedback:
-            if not moderate_query(user_input): return jsonify({"type": "error", "content": "This search is not permitted."})
-            if session.get('retries', 0) >= 2: return jsonify({"type": "final_message", "content": "I've tried my best. Let's start a new search!"})
+            if not moderate_query(user_input): 
+                return jsonify({"type": "error", "content": "This search is not permitted."})
+            if session.get('retries', 0) >= 2: 
+                return jsonify({"type": "final_message", "content": "I've tried my best. Let's start a new search!"})
             session['retries'] += 1
             session['conversation'] += f"\nUser was not satisfied. New request: {user_input}"
         else:
              session['conversation'] += f"\nMy Answer: {user_input}"
 
-    if data.get("distance"): session['travel_distance'] = int(data.get("distance"))
-    if data.get('expand_search'): session['travel_distance'] = 20000
+    if data.get("distance"):
+        session['travel_distance'] = int(data.get("distance"))
+    if data.get('expand_search'):
+        session['travel_distance'] = 20000
 
     llm_response = refine_query_with_llm(session['conversation'])
-    if llm_response.get("type") != "keyword": return jsonify(llm_response)
+    if llm_response.get("type") != "keyword":
+        return jsonify(llm_response)
 
     final_keyword = llm_response.get("content")
     session['last_keyword'] = final_keyword
@@ -353,7 +352,7 @@ def get_recommendation_route():
     if not final_recs_data or not final_recs_data.get("recommendations"):
         return jsonify({"type": "error", "content": "The AI had trouble picking final recommendations. Please try again."})
 
-    session['excluded_ids'].extend([p.get('place_id') for p in detailed_places])
+    session['excluded_ids'].extend([p.get('place_id') for p in detailed_places if p])
     final_recs_data['last_keyword'] = final_keyword
     
     session.modified = True
