@@ -115,7 +115,6 @@ plan_book = {
 # --- Helper Functions ---
 
 def moderate_query(user_input):
-    print("--- [HELPER] Running moderation check...", flush=True)
     moderation_prompt = f"""
     You are a content safety moderator for a local business search app. Your goal is to flag ONLY a very narrow set of harmful queries. You must allow searches for all legal businesses, including those for adults.
     ALLOWED (mark as "safe"): Any queries for legal businesses, including bars, wineries, breweries, strip clubs, adult stores, and cannabis dispensaries. Use of slang like "killer view" or "food to die for" is also safe.
@@ -129,14 +128,12 @@ def moderate_query(user_input):
     try:
         response = openai.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "system", "content": "You are a content safety moderator."}, {"role": "user", "content": moderation_prompt}], temperature=0, max_tokens=5)
         decision = response.choices[0].message.content.strip().lower().replace('"', '').replace('.', '')
-        print(f"--- [HELPER] Moderation decision: {decision}", flush=True)
         return decision == "safe"
     except Exception as e:
         print(f"--- [CRITICAL_ERROR] Moderation check failed: {e}", flush=True)
         return False
 
 def refine_query_with_llm(conversation_history):
-    print("--- [HELPER] Refining query with LLM...", flush=True)
     system_prompt = """
     You are an expert conversational query refiner for the Google Maps Places API. Your primary goal is to combine the user's entire conversation history into a single, optimized keyword phrase for the API. This phrase should be a maximum of 9 words.
 
@@ -160,21 +157,18 @@ def refine_query_with_llm(conversation_history):
     try:
         response = openai.chat.completions.create(model="gpt-4o-mini", response_format={"type": "json_object"}, messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": conversation_history}])
         result = json.loads(response.choices[0].message.content)
-        print(f"--- [HELPER] LLM refinement result: {result}", flush=True)
         return result
     except Exception as e:
         print(f"--- [CRITICAL_ERROR] LLM query refinement failed: {e}", flush=True)
         return {"type": "error", "content": "Sorry, I had trouble refining your query."}
 
 def get_nearby_places(location, keyword, radius):
-    print(f"--- [HELPER] Searching Google Places API with keyword='{keyword}', radius='{radius}'", flush=True)
     url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
     params = {'location': f"{location['lat']},{location['lng']}", 'radius': radius, 'keyword': keyword, 'key': GOOGLE_MAPS_API_KEY}
     try:
         response = requests.get(url, params=params)
         response.raise_for_status()
         results = response.json()
-        print(f"--- [HELPER] Google Places API found {len(results.get('results', []))} results.", flush=True)
         return results
     except Exception as e:
         print(f"--- [CRITICAL_ERROR] Google Places API search failed: {e}", flush=True)
@@ -204,7 +198,6 @@ def get_travel_times(origin, place_ids):
         print(f"Error getting travel times: {e}"); return {}
 
 def get_final_recommendation(conversation_history, places_data, origin):
-    print("--- [HELPER] Ranking results with LLM...", flush=True)
     if not places_data: return None
     place_ids_to_rank = [p['place_id'] for p in places_data if 'place_id' in p]
     if not place_ids_to_rank: return None
@@ -213,30 +206,28 @@ def get_final_recommendation(conversation_history, places_data, origin):
     for p in places_data:
         place_id = p.get('place_id')
         if place_id:
+            # ** THE FIX IS HERE: We now send only ONE review, not five. **
+            top_review = ""
+            if p.get('reviews') and len(p['reviews']) > 0:
+                top_review = p['reviews'][0].get('text', '')
+
             lean_data_for_llm.append({
                 'place_id': place_id, 'name': p.get('name'), 'types': p.get('types', []),
                 'rating': p.get('rating'), 'review_count': p.get('user_ratings_total'),
                 'price_level': p.get('price_level'), 'travel_time': travel_times_map.get(place_id, 'N/A'),
                 'wheelchair_accessible': p.get('wheelchair_accessible_entrance'),
                 'summary': p.get('editorial_summary', {}).get('overview', 'No summary available.'),
-                'reviews': [r.get('text', '') for r in p.get('reviews', [])[:5]]
+                'top_review': top_review
             })
 
     system_prompt = """
-    You are an expert local guide and recommendation concierge. Your goal is to analyze a list of potential places and rank them according to a user's specific request. You must provide a structured, reasoned analysis for your rankings.
-
+    You are an expert local guide. Your goal is to rank a list of places based on a user's request, using the provided data. You must provide a structured analysis.
     **TASK:**
-    1.  Analyze the user's conversation history to deeply understand their needs (e.g., ambiance, price, occasion, specific features).
-    2.  For each place in the provided JSON data, evaluate it based on the user's request.
-    3.  You will score each place on FOUR criteria, from 1 (poor match) to 10 (perfect match):
-        - **Relevance Score**: How well do the place's `types`, `summary`, and `reviews` match the user's explicit request (e.g., "cozy cafe", "romantic italian restaurant")?
-        - **Quality Score**: A combination of the `rating` and `review_count`. A high rating with many reviews is a 10. A low rating or very few reviews is a 1.
-        - **Vibe Score**: Based on the language in the `reviews`, does the atmosphere (e.g., "lively", "quiet", "trendy", "family-friendly") match the implicit mood of the user's request?
-        - **Convenience Score**: Based on the `travel_time`. A shorter travel time gets a higher score (e.g., <10 mins is a 10, >45 mins is a 1).
-    4.  Provide a `final_score` which is a weighted average of the four scores.
-    5.  Write a concise `justification` (20-30 words) for your ranking, explaining why this place is a good match, considering all factors including travel time.
-    6.  Return a single JSON object containing a key "ranked_recommendations". The value should be a list of all analyzed places, sorted from highest `final_score` to lowest.
-
+    1.  Analyze the user's conversation history to understand their needs.
+    2.  For each place, evaluate it based on the user's request, using its `summary` and `top_review` to gauge the vibe.
+    3.  Score each place on FOUR criteria (1-10): `Relevance Score`, `Quality Score` (rating + review_count), `Vibe Score` (from reviews/summary), and `Convenience Score` (from travel_time).
+    4.  Provide a `final_score` (weighted average) and a concise `justification` (20-30 words).
+    5.  Return a single JSON object containing a key "ranked_recommendations", with a list of all analyzed places, sorted from highest `final_score` to lowest.
     **OUTPUT FORMAT (Strict):**
     { "ranked_recommendations": [ { "place_id": "string", "name": "string", "relevance_score": integer, "quality_score": integer, "vibe_score": integer, "convenience_score": integer, "final_score": float, "justification": "string" }, ... ] }
     """
@@ -257,7 +248,6 @@ def get_final_recommendation(conversation_history, places_data, origin):
                 place_data['link'] = f"https://www.google.com/maps/search/?api=1&query={place_name}&query_place_id={pid}"
                 place_data['travel_time'] = travel_times_map.get(pid, 'N/A')
                 final_recs.append(place_data)
-        print("--- [HELPER] LLM ranking successful.", flush=True)
         return {"recommendations": final_recs}
     except Exception as e:
         print(f"--- [CRITICAL_ERROR] Final recommendation ranking failed: {e}", flush=True)
@@ -266,57 +256,47 @@ def get_final_recommendation(conversation_history, places_data, origin):
 # --- Flask Routes ---
 @app.route("/")
 def home():
-    print("--- [ROUTE] /: Home page requested. Clearing session. ---", flush=True)
     session.clear()
     return render_template("index.html")
 
 @app.route("/refine", methods=["POST"])
 def refine_page():
-    plan_id = request.form.get("plan_id")
-    print(f"--- [ROUTE] /refine: Refine page requested for plan_id='{plan_id}'. Clearing session. ---", flush=True)
     session.clear()
+    plan_id = request.form.get("plan_id")
     if plan_id and plan_id in plan_book:
         return render_template("refine.html", plan_id=plan_id, plan=plan_book[plan_id])
     return redirect(url_for('home'))
 
 @app.route("/app", methods=["POST"])
 def app_page():
-    print("--- [ROUTE] /app: App page requested. ---", flush=True)
     session.clear()
     form_data = request.form
     if 'query' in form_data and form_data.get('query'):
-        query = form_data.get('query')
-        print(f"--- [ROUTE] /app: Path is 'Direct Search'. Query: '{query}' ---", flush=True)
-        session['initial_query'] = query
+        session['initial_query'] = form_data.get('query')
         session['display_title'] = "for your search"
         return render_template("app.html")
     elif 'plan_id' in form_data:
         plan_id = form_data.get('plan_id')
-        action = form_data.get('action')
-        print(f"--- [ROUTE] /app: Path is 'Plan'. Plan ID: '{plan_id}', Action: '{action}' ---", flush=True)
         plan = plan_book.get(plan_id)
         if not plan: return redirect(url_for('home'))
         initial_prompt = [plan['base_prompt']]
         session['display_title'] = plan['display_title']
-        if action == 'get_recommendations':
+        if form_data.get('action') == 'get_recommendations':
             for question in plan['questions']:
                 q_id = question['id']
                 if q_id in form_data and form_data[q_id]:
                     initial_prompt.append(f"For '{question['text']}', the user specified '{form_data[q_id]}'.")
         session['initial_query'] = " ".join(initial_prompt)
-        print(f"--- [ROUTE] /app: Constructed initial query: \"{session['initial_query']}\" ---", flush=True)
         return render_template("app.html")
     return redirect(url_for('home'))
 
 @app.route("/get_recommendation", methods=["POST"])
 def get_recommendation_route():
-    print("\n\n--- [API_CALL] /get_recommendation: Received new recommendation request. ---", flush=True)
     data = request.json
     location = data.get("location")
     user_input = data.get("query")
     is_feedback = data.get("is_feedback", False)
     
-    print(f"--- [API_CALL] Building conversation. Initial query: '{user_input}', Is feedback: {is_feedback}", flush=True)
     if 'conversation' not in session:
         if not moderate_query(user_input): 
             return jsonify({"type": "error", "content": "This search is not permitted."})
@@ -332,60 +312,46 @@ def get_recommendation_route():
         else:
              session['conversation'] += f"\nMy Answer: {user_input}"
     
-    print("--- [API_CALL] Updating travel distance.", flush=True)
     if data.get("distance"): session['travel_distance'] = int(data.get("distance"))
     if data.get('expand_search'): session['travel_distance'] = 20000
 
-    print("--- [API_CALL] Refining query with LLM.", flush=True)
     llm_response = refine_query_with_llm(session['conversation'])
     if llm_response.get("type") != "keyword":
-        print("--- [API_CALL] LLM asked a clarifying question. Responding to user.", flush=True)
         return jsonify(llm_response)
 
     final_keyword = llm_response.get("content")
     session['last_keyword'] = final_keyword
-    print(f"--- [API_CALL] Refined keyword is: '{final_keyword}'", flush=True)
     
     current_distance = session.get('travel_distance', 3000)
-    print(f"--- [API_CALL] Searching Google Places with radius: {current_distance}", flush=True)
     nearby_places = get_nearby_places(location, final_keyword, current_distance)
 
     if not nearby_places or not nearby_places.get('results'):
-        print("--- [API_CALL] No places found in initial search.", flush=True)
         if current_distance < 20000:
             return jsonify({"type": "expand_search", "message": "I couldn't find anything in that range. Would you like to expand the search area?"})
         else:
             return jsonify({"type": "error", "content": "I couldn't find any places, even in a wider area."})
 
-    print(f"--- [API_CALL] Found {len(nearby_places.get('results', []))} total places. Filtering out previously seen places.", flush=True)
     unseen_places = [p for p in nearby_places['results'] if p.get('place_id') not in session.get('excluded_ids', [])]
     
     if not unseen_places:
-        print("--- [API_CALL] No *new* places found after filtering.", flush=True)
         return jsonify({"type": "error", "content": "I couldn't find any new places matching your refined search. Try broadening your criteria or starting a new search."})
     
-    print(f"--- [API_CALL] Fetching details for up to 15 unseen places.", flush=True)
     detailed_places_list = [get_place_details_and_photos(p.get('place_id')) for p in unseen_places[:15] if p.get('place_id')]
     detailed_places = [d for d in detailed_places_list if d]
-    print(f"--- [API_CALL] Successfully fetched details for {len(detailed_places)} places.", flush=True)
 
-    print("--- [API_CALL] Sending place data to LLM for final ranking.", flush=True)
     final_recs_data = get_final_recommendation(session['conversation'], detailed_places, location)
 
     if not final_recs_data or not final_recs_data.get("recommendations"):
-        print("--- [API_CALL] Final recommendation ranking from LLM failed or returned empty.", flush=True)
         return jsonify({"type": "error", "content": "The AI had trouble picking final recommendations. Please try again."})
 
     session['excluded_ids'].extend([p.get('place_id') for p in detailed_places if p])
     final_recs_data['last_keyword'] = final_keyword
     
     session.modified = True
-    print("--- [API_CALL] Successfully generated recommendations. Sending response to user.", flush=True)
     return jsonify({"type": "recommendation", "data": final_recs_data})
 
 @app.route("/history")
 def history_page():
-    print("--- [ROUTE] /history: History/Bookmarks page requested. ---", flush=True)
     return render_template("history.html")
 
 if __name__ == "__main__":
