@@ -130,8 +130,7 @@ def moderate_query(user_input):
         decision = response.choices[0].message.content.strip().lower().replace('"', '').replace('.', '')
         return decision == "safe"
     except Exception as e:
-        print(f"--- [CRITICAL_ERROR] Moderation check failed: {e}", flush=True)
-        return False
+        print(f"Moderation check failed: {e}"); return False
 
 def refine_query_with_llm(conversation_history):
     system_prompt = """
@@ -156,23 +155,17 @@ def refine_query_with_llm(conversation_history):
     """
     try:
         response = openai.chat.completions.create(model="gpt-4o-mini", response_format={"type": "json_object"}, messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": conversation_history}])
-        result = json.loads(response.choices[0].message.content)
-        return result
+        return json.loads(response.choices[0].message.content)
     except Exception as e:
-        print(f"--- [CRITICAL_ERROR] LLM query refinement failed: {e}", flush=True)
-        return {"type": "error", "content": "Sorry, I had trouble refining your query."}
+        print(f"Error in refine_query_with_llm: {e}"); return {"type": "error", "content": "Sorry, I had trouble refining your query."}
 
 def get_nearby_places(location, keyword, radius):
     url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
     params = {'location': f"{location['lat']},{location['lng']}", 'radius': radius, 'keyword': keyword, 'key': GOOGLE_MAPS_API_KEY}
     try:
-        response = requests.get(url, params=params)
-        response.raise_for_status()
-        results = response.json()
-        return results
+        response = requests.get(url, params=params); response.raise_for_status(); return response.json()
     except Exception as e:
-        print(f"--- [CRITICAL_ERROR] Google Places API search failed: {e}", flush=True)
-        return None
+        print(f"Error in get_nearby_places: {e}"); return None
 
 def get_place_details_and_photos(place_id):
     details_url = "https://maps.googleapis.com/maps/api/place/details/json"
@@ -206,28 +199,30 @@ def get_final_recommendation(conversation_history, places_data, origin):
     for p in places_data:
         place_id = p.get('place_id')
         if place_id:
-            # ** THE FIX IS HERE: We now send only ONE review, not five. **
-            top_review = ""
-            if p.get('reviews') and len(p['reviews']) > 0:
-                top_review = p['reviews'][0].get('text', '')
-
             lean_data_for_llm.append({
                 'place_id': place_id, 'name': p.get('name'), 'types': p.get('types', []),
                 'rating': p.get('rating'), 'review_count': p.get('user_ratings_total'),
                 'price_level': p.get('price_level'), 'travel_time': travel_times_map.get(place_id, 'N/A'),
                 'wheelchair_accessible': p.get('wheelchair_accessible_entrance'),
                 'summary': p.get('editorial_summary', {}).get('overview', 'No summary available.'),
-                'top_review': top_review
+                'reviews': [r.get('text', '') for r in p.get('reviews', [])[:5]]
             })
 
     system_prompt = """
-    You are an expert local guide. Your goal is to rank a list of places based on a user's request, using the provided data. You must provide a structured analysis.
+    You are an expert local guide and recommendation concierge. Your goal is to analyze a list of potential places and rank them according to a user's specific request. You must provide a structured, reasoned analysis for your rankings.
+
     **TASK:**
-    1.  Analyze the user's conversation history to understand their needs.
-    2.  For each place, evaluate it based on the user's request, using its `summary` and `top_review` to gauge the vibe.
-    3.  Score each place on FOUR criteria (1-10): `Relevance Score`, `Quality Score` (rating + review_count), `Vibe Score` (from reviews/summary), and `Convenience Score` (from travel_time).
-    4.  Provide a `final_score` (weighted average) and a concise `justification` (20-30 words).
-    5.  Return a single JSON object containing a key "ranked_recommendations", with a list of all analyzed places, sorted from highest `final_score` to lowest.
+    1.  Analyze the user's conversation history to deeply understand their needs (e.g., ambiance, price, occasion, specific features).
+    2.  For each place in the provided JSON data, evaluate it based on the user's request.
+    3.  You will score each place on FOUR criteria, from 1 (poor match) to 10 (perfect match):
+        - **Relevance Score**: How well do the place's `types`, `summary`, and `reviews` match the user's explicit request (e.g., "cozy cafe", "romantic italian restaurant")?
+        - **Quality Score**: A combination of the `rating` and `review_count`. A high rating with many reviews is a 10. A low rating or very few reviews is a 1.
+        - **Vibe Score**: Based on the language in the `reviews`, does the atmosphere (e.g., "lively", "quiet", "trendy", "family-friendly") match the implicit mood of the user's request?
+        - **Convenience Score**: Based on the `travel_time`. A shorter travel time gets a higher score (e.g., <10 mins is a 10, >45 mins is a 1).
+    4.  Provide a `final_score` which is a weighted average of the four scores.
+    5.  Write a concise `justification` (20-30 words) for your ranking, explaining why this place is a good match, considering all factors including travel time.
+    6.  Return a single JSON object containing a key "ranked_recommendations". The value should be a list of all analyzed places, sorted from highest `final_score` to lowest.
+
     **OUTPUT FORMAT (Strict):**
     { "ranked_recommendations": [ { "place_id": "string", "name": "string", "relevance_score": integer, "quality_score": integer, "vibe_score": integer, "convenience_score": integer, "final_score": float, "justification": "string" }, ... ] }
     """
@@ -250,8 +245,7 @@ def get_final_recommendation(conversation_history, places_data, origin):
                 final_recs.append(place_data)
         return {"recommendations": final_recs}
     except Exception as e:
-        print(f"--- [CRITICAL_ERROR] Final recommendation ranking failed: {e}", flush=True)
-        return None
+        print(f"Error in get_final_recommendation: {e}"); return None
 
 # --- Flask Routes ---
 @app.route("/")
@@ -271,24 +265,32 @@ def refine_page():
 def app_page():
     session.clear()
     form_data = request.form
+
     if 'query' in form_data and form_data.get('query'):
         session['initial_query'] = form_data.get('query')
         session['display_title'] = "for your search"
         return render_template("app.html")
+
     elif 'plan_id' in form_data:
         plan_id = form_data.get('plan_id')
         plan = plan_book.get(plan_id)
-        if not plan: return redirect(url_for('home'))
+        if not plan:
+            return redirect(url_for('home'))
+
         initial_prompt = [plan['base_prompt']]
         session['display_title'] = plan['display_title']
+        
         if form_data.get('action') == 'get_recommendations':
             for question in plan['questions']:
                 q_id = question['id']
                 if q_id in form_data and form_data[q_id]:
                     initial_prompt.append(f"For '{question['text']}', the user specified '{form_data[q_id]}'.")
+        
         session['initial_query'] = " ".join(initial_prompt)
         return render_template("app.html")
+    
     return redirect(url_for('home'))
+
 
 @app.route("/get_recommendation", methods=["POST"])
 def get_recommendation_route():
@@ -305,15 +307,19 @@ def get_recommendation_route():
         session['retries'] = 0
     else:
         if is_feedback:
-            if not moderate_query(user_input): return jsonify({"type": "error", "content": "This search is not permitted."})
-            if session.get('retries', 0) >= 2: return jsonify({"type": "final_message", "content": "I've tried my best. Let's start a new search!"})
+            if not moderate_query(user_input): 
+                return jsonify({"type": "error", "content": "This search is not permitted."})
+            if session.get('retries', 0) >= 2: 
+                return jsonify({"type": "final_message", "content": "I've tried my best. Let's start a new search!"})
             session['retries'] += 1
             session['conversation'] += f"\nUser was not satisfied. New request: {user_input}"
         else:
              session['conversation'] += f"\nMy Answer: {user_input}"
-    
-    if data.get("distance"): session['travel_distance'] = int(data.get("distance"))
-    if data.get('expand_search'): session['travel_distance'] = 20000
+
+    if data.get("distance"):
+        session['travel_distance'] = int(data.get("distance"))
+    if data.get('expand_search'):
+        session['travel_distance'] = 20000
 
     llm_response = refine_query_with_llm(session['conversation'])
     if llm_response.get("type") != "keyword":
@@ -336,10 +342,8 @@ def get_recommendation_route():
     if not unseen_places:
         return jsonify({"type": "error", "content": "I couldn't find any new places matching your refined search. Try broadening your criteria or starting a new search."})
     
-    detailed_places_list = [get_place_details_and_photos(p.get('place_id')) for p in unseen_places[:15] if p.get('place_id')]
-    detailed_places = [d for d in detailed_places_list if d]
-
-    final_recs_data = get_final_recommendation(session['conversation'], detailed_places, location)
+    detailed_places = [get_place_details_and_photos(p.get('place_id')) for p in unseen_places[:15] if p.get('place_id')]
+    final_recs_data = get_final_recommendation(session['conversation'], [d for d in detailed_places if d], location)
 
     if not final_recs_data or not final_recs_data.get("recommendations"):
         return jsonify({"type": "error", "content": "The AI had trouble picking final recommendations. Please try again."})
