@@ -26,6 +26,7 @@
             <h2>How far are you willing to travel? 🚗</h2>
             <p class="prompt-text">Select an estimated travel time.</p>
             <div class="distance-options">
+                <button class="distance-button" data-distance="500">🚶 Walking (~5 mins)</button>
                 <button class="distance-button" data-distance="1500">~10 mins</button>
                 <button class="distance-button" data-distance="4000">~20 mins</button>
                 <button class="distance-button" data-distance="8000">~30 mins</button>
@@ -238,7 +239,7 @@
 
             document.querySelectorAll('.distance-button').forEach(button => {
                 button.addEventListener('click', () => {
-                    fetchRecommendations({ query: document.getElementById('initial-query').value, location: appState.location, distance: button.dataset.distance, is_feedback: false });
+                    fetchRecommendations({ query: document.getElementById('initial-query')..value, location: appState.location, distance: button.dataset.distance, is_feedback: false });
                 });
             });
             
