@@ -54,6 +54,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function search(query, isFeedback = false, expand = false) {
+        console.log("[DEBUG] Preparing to send fetch request to /get_recommendation", {
+            query,
+            location: userLocation,
+            is_feedback: isFeedback,
+            distance: currentDistance,
+            expand
+        });
         showState("loading");
         startLoadingAnimation();
         try {
@@ -62,9 +69,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ query, location: userLocation, is_feedback: isFeedback, distance: currentDistance, expand }),
             });
+            console.log("[DEBUG] Fetch response object:", response);
+            console.log("[DEBUG] Response status:", response.status, response.statusText);
             const data = await response.json();
+            console.log("[DEBUG] Parsed JSON data:", data);
             handleServerResponse(data);
         } catch (error) {
+            console.error("[DEBUG] Fetch or network error:", error);
             errorMessageText.textContent = "An unexpected error occurred while connecting to the server.";
             showState("error");
         } finally {
@@ -191,6 +202,14 @@ document.addEventListener("DOMContentLoaded", () => {
         const feedbackQuery = feedbackInput.value.trim();
         if (feedbackQuery) { search(feedbackQuery, true); }
         feedbackInput.value = "";
+    });
+
+    // --- Global error handlers for debugging ---
+    window.addEventListener('error', function(event) {
+        console.error("[DEBUG] Global JS error:", event);
+    });
+    window.addEventListener('unhandledrejection', function(event) {
+        console.error("[DEBUG] Unhandled promise rejection:", event.reason);
     });
 
     // --- Start the process ---
