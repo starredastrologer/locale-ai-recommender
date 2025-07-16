@@ -115,6 +115,8 @@ plan_book = {
 # --- Helper Functions ---
 
 def moderate_query(user_input):
+    if not user_input or not isinstance(user_input, str) or not user_input.strip():
+        return False
     moderation_prompt = f"""
     You are a content safety moderator for a local business search app. Your goal is to flag ONLY a very narrow set of harmful queries. You must allow searches for all legal businesses, including those for adults.
     ALLOWED (mark as "safe"): Any queries for legal businesses, including bars, wineries, breweries, strip clubs, adult stores, and cannabis dispensaries. Use of slang like "killer view" or "food to die for" is also safe.
@@ -312,6 +314,11 @@ def get_recommendation_route():
         user_input = data.get("query")
         is_feedback = data.get("is_feedback", False)
         
+        # Defensive check for user_input
+        if not user_input or not isinstance(user_input, str) or not user_input.strip():
+            print("[DEBUG] user_input is missing or empty.")
+            return jsonify({"type": "error", "content": "No user input provided."})
+
         if 'conversation' not in session:
             if not moderate_query(user_input): 
                 print("[DEBUG] Query flagged as inappropriate by moderation.")
