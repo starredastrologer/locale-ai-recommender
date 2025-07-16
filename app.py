@@ -196,17 +196,26 @@ def get_final_recommendation(conversation_history, places_data, origin):
     if not place_ids_to_rank: return None
     travel_times_map = get_travel_times(origin, place_ids_to_rank)
     lean_data_for_llm = []
+    total_reviews = 0
     for p in places_data:
         place_id = p.get('place_id')
         if place_id:
+            # Truncate each review to 200 characters
+            reviews = [r.get('text', '')[:200] for r in p.get('reviews', [])[:5]]
+            total_reviews += len(reviews)
             lean_data_for_llm.append({
                 'place_id': place_id, 'name': p.get('name'), 'types': p.get('types', []),
                 'rating': p.get('rating'), 'review_count': p.get('user_ratings_total'),
                 'price_level': p.get('price_level'), 'travel_time': travel_times_map.get(place_id, 'N/A'),
                 'wheelchair_accessible': p.get('wheelchair_accessible_entrance'),
                 'summary': p.get('editorial_summary', {}).get('overview', 'No summary available.'),
-                'reviews': [r.get('text', '') for r in p.get('reviews', [])[:5]]
+                'reviews': reviews
             })
+    import sys
+    import json as _json
+    print(f"[DEBUG] Number of places sent to LLM: {len(lean_data_for_llm)}")
+    print(f"[DEBUG] Total reviews sent to LLM: {total_reviews}")
+    print(f"[DEBUG] Estimated JSON size sent to LLM: {len(_json.dumps(lean_data_for_llm))} bytes")
 
     system_prompt = """
     You are an expert local guide and recommendation concierge. Your goal is to analyze a list of potential places and rank them according to a user's specific request. You must provide a structured, reasoned analysis for your rankings.
@@ -358,7 +367,7 @@ def get_recommendation_route():
             print("[DEBUG] No unseen places found.")
             return jsonify({"type": "error", "content": "I couldn't find any new places matching your refined search. Try broadening your criteria or starting a new search."})
         
-        detailed_places = [get_place_details_and_photos(p.get('place_id')) for p in unseen_places[:15] if p.get('place_id')]
+        detailed_places = [get_place_details_and_photos(p.get('place_id')) for p in unseen_places[:10] if p.get('place_id')]
         print(f"[DEBUG] Detailed places: {detailed_places}")
         final_recs_data = get_final_recommendation(session['conversation'], [d for d in detailed_places if d], location)
         print(f"[DEBUG] Final recommendations data: {final_recs_data}")
