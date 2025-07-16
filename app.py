@@ -294,65 +294,90 @@ def app_page():
 
 @app.route("/get_recommendation", methods=["POST"])
 def get_recommendation_route():
-    data = request.json
-    location = data.get("location")
-    user_input = data.get("query")
-    is_feedback = data.get("is_feedback", False)
-    
-    if 'conversation' not in session:
-        if not moderate_query(user_input): 
-            return jsonify({"type": "error", "content": "This search is not permitted."})
-        session['conversation'] = f"User's initial request: {user_input}"
-        session['excluded_ids'] = []
-        session['retries'] = 0
-    else:
-        if is_feedback:
+    try:
+        print("[DEBUG] Incoming /get_recommendation request")
+        data = request.json
+        print(f"[DEBUG] Request data: {data}")
+        print(f"[DEBUG] Session before processing: {dict(session)}")
+        location = data.get("location")
+        user_input = data.get("query")
+        is_feedback = data.get("is_feedback", False)
+        
+        if 'conversation' not in session:
             if not moderate_query(user_input): 
+                print("[DEBUG] Query flagged as inappropriate by moderation.")
                 return jsonify({"type": "error", "content": "This search is not permitted."})
-            if session.get('retries', 0) >= 2: 
-                return jsonify({"type": "final_message", "content": "I've tried my best. Let's start a new search!"})
-            session['retries'] += 1
-            session['conversation'] += f"\nUser was not satisfied. New request: {user_input}"
+            session['conversation'] = f"User's initial request: {user_input}"
+            session['excluded_ids'] = []
+            session['retries'] = 0
         else:
-             session['conversation'] += f"\nMy Answer: {user_input}"
+            if is_feedback:
+                if not moderate_query(user_input): 
+                    print("[DEBUG] Feedback query flagged as inappropriate by moderation.")
+                    return jsonify({"type": "error", "content": "This search is not permitted."})
+                if session.get('retries', 0) >= 2: 
+                    print("[DEBUG] Retry limit reached for feedback.")
+                    return jsonify({"type": "final_message", "content": "I've tried my best. Let's start a new search!"})
+                session['retries'] += 1
+                session['conversation'] += f"\nUser was not satisfied. New request: {user_input}"
+            else:
+                 session['conversation'] += f"\nMy Answer: {user_input}"
 
-    if data.get("distance"):
-        session['travel_distance'] = int(data.get("distance"))
-    if data.get('expand_search'):
-        session['travel_distance'] = 20000
+        if data.get("distance"):
+            session['travel_distance'] = int(data.get("distance"))
+        if data.get('expand_search'):
+            session['travel_distance'] = 20000
 
-    llm_response = refine_query_with_llm(session['conversation'])
-    if llm_response.get("type") != "keyword":
-        return jsonify(llm_response)
+        print(f"[DEBUG] Session after input processing: {dict(session)}")
+        llm_response = refine_query_with_llm(session['conversation'])
+        print(f"[DEBUG] LLM response: {llm_response}")
+        if llm_response.get("type") != "keyword":
+            print("[DEBUG] LLM did not return a keyword, returning response.")
+            return jsonify(llm_response)
 
-    final_keyword = llm_response.get("content")
-    session['last_keyword'] = final_keyword
-    
-    current_distance = session.get('travel_distance', 3000)
-    nearby_places = get_nearby_places(location, final_keyword, current_distance)
+        final_keyword = llm_response.get("content")
+        session['last_keyword'] = final_keyword
+        
+        current_distance = session.get('travel_distance', 3000)
+        print(f"[DEBUG] Calling get_nearby_places with location={location}, keyword={final_keyword}, distance={current_distance}")
+        nearby_places = get_nearby_places(location, final_keyword, current_distance)
+        print(f"[DEBUG] Nearby places: {nearby_places}")
 
-    if not nearby_places or not nearby_places.get('results'):
-        if current_distance < 20000:
-            return jsonify({"type": "expand_search", "message": "I couldn't find anything in that range. Would you like to expand the search area?"})
-        else:
-            return jsonify({"type": "error", "content": "I couldn't find any places, even in a wider area."})
+        if not nearby_places or not nearby_places.get('results'):
+            if current_distance < 20000:
+                print("[DEBUG] No places found, suggesting to expand search.")
+                return jsonify({"type": "expand_search", "message": "I couldn't find anything in that range. Would you like to expand the search area?"})
+            else:
+                print("[DEBUG] No places found even after expanding search.")
+                return jsonify({"type": "error", "content": "I couldn't find any places, even in a wider area."})
 
-    unseen_places = [p for p in nearby_places['results'] if p.get('place_id') not in session.get('excluded_ids', [])]
-    
-    if not unseen_places:
-        return jsonify({"type": "error", "content": "I couldn't find any new places matching your refined search. Try broadening your criteria or starting a new search."})
-    
-    detailed_places = [get_place_details_and_photos(p.get('place_id')) for p in unseen_places[:15] if p.get('place_id')]
-    final_recs_data = get_final_recommendation(session['conversation'], [d for d in detailed_places if d], location)
+        unseen_places = [p for p in nearby_places['results'] if p.get('place_id') not in session.get('excluded_ids', [])]
+        print(f"[DEBUG] Unseen places: {unseen_places}")
+        
+        if not unseen_places:
+            print("[DEBUG] No unseen places found.")
+            return jsonify({"type": "error", "content": "I couldn't find any new places matching your refined search. Try broadening your criteria or starting a new search."})
+        
+        detailed_places = [get_place_details_and_photos(p.get('place_id')) for p in unseen_places[:15] if p.get('place_id')]
+        print(f"[DEBUG] Detailed places: {detailed_places}")
+        final_recs_data = get_final_recommendation(session['conversation'], [d for d in detailed_places if d], location)
+        print(f"[DEBUG] Final recommendations data: {final_recs_data}")
 
-    if not final_recs_data or not final_recs_data.get("recommendations"):
-        return jsonify({"type": "error", "content": "The AI had trouble picking final recommendations. Please try again."})
+        if not final_recs_data or not final_recs_data.get("recommendations"):
+            print("[DEBUG] AI had trouble picking final recommendations.")
+            return jsonify({"type": "error", "content": "The AI had trouble picking final recommendations. Please try again."})
 
-    session['excluded_ids'].extend([p.get('place_id') for p in detailed_places if p])
-    final_recs_data['last_keyword'] = final_keyword
-    
-    session.modified = True
-    return jsonify({"type": "recommendation", "data": final_recs_data})
+        session['excluded_ids'].extend([p.get('place_id') for p in detailed_places if p])
+        final_recs_data['last_keyword'] = final_keyword
+        
+        session.modified = True
+        print(f"[DEBUG] Session before response: {dict(session)}")
+        return jsonify({"type": "recommendation", "data": final_recs_data})
+    except Exception as e:
+        import traceback
+        print(f"[ERROR] Exception in /get_recommendation: {e}")
+        traceback.print_exc()
+        return jsonify({"type": "error", "content": "An internal server error occurred. Please try again later."}), 500
 
 @app.route("/history")
 def history_page():
